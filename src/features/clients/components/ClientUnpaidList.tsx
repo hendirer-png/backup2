@@ -1,6 +1,6 @@
 import React from 'react';
 import { WhatsappIcon } from '@/constants';
-import { ExtendedClient } from '@/features/clients/types/clients.types';
+import { ExtendedClient } from '@/features/clients/types';
 import { formatCurrency } from '@/features/clients/utils/clients.utils';
 
 interface ClientUnpaidListProps {

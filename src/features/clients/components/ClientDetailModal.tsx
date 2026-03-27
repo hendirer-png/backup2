@@ -29,7 +29,6 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     setCards,
     userProfile
 }) => {
-    const [activeTab, setActiveTab] = useState('info');
     const [newPayments, setNewPayments] = useState<{ [key: string]: { amount: string, destinationCardId: string } }>({});
     const [newCharge, setNewCharge] = useState<{ [key: string]: { name: string, amount: string } }>({});
     const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
@@ -146,21 +145,22 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
     return (
         <Modal isOpen={!!client} onClose={onClose} title={`Detail Pengantin: ${client.name}`} size="5xl">
             <div className="flex flex-col h-full">
-                <div className="hidden md:block border-b border-brand-border">
-                    <nav className="-mb-px flex space-x-6">
-                        <button onClick={() => setActiveTab('info')} className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'info' ? 'border-brand-accent text-brand-accent' : 'border-transparent text-brand-text-secondary'}`}><UsersIcon className="w-5 h-5" /> Info</button>
-                        <button onClick={() => setActiveTab('payments')} className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'payments' ? 'border-brand-accent text-brand-accent' : 'border-transparent text-brand-text-secondary'}`}><HistoryIcon className="w-5 h-5" /> Pembayaran</button>
-                    </nav>
-                </div>
-                {/* Mobile Tabs */}
-                <div className="md:hidden flex gap-2 mb-4">
-                    <button onClick={() => setActiveTab('info')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${activeTab === 'info' ? 'bg-brand-accent text-white' : 'bg-brand-surface text-brand-text-secondary'}`}>Info</button>
-                    <button onClick={() => setActiveTab('payments')} className={`flex-1 py-2 rounded-lg text-sm font-medium ${activeTab === 'payments' ? 'bg-brand-accent text-white' : 'bg-brand-surface text-brand-text-secondary'}`}>Pembayaran</button>
-                </div>
+                <div className="max-h-[75vh] overflow-y-auto pr-2 pb-4 space-y-8 custom-scrollbar">
+                    {/* Info Section */}
+                    <section>
+                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                            <UsersIcon className="w-5 h-5 text-brand-accent" />
+                            <h3 className="font-bold text-brand-text-primary">Informasi Pengantin</h3>
+                        </div>
+                        <ClientInfoTab client={client} clientProjects={clientProjects} onSharePortal={onSharePortal} />
+                    </section>
 
-                <div className="pt-5 max-h-[65vh] overflow-y-auto pr-2 pb-4">
-                    {activeTab === 'info' && <ClientInfoTab client={client} clientProjects={clientProjects} onSharePortal={onSharePortal} />}
-                    {activeTab === 'payments' && (
+                    {/* Payments Section */}
+                    <section>
+                        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                            <HistoryIcon className="w-5 h-5 text-brand-accent" />
+                            <h3 className="font-bold text-brand-text-primary">Riwayat Proyek & Pembayaran</h3>
+                        </div>
                         <div className="space-y-6">
                             {clientProjects.map(p => (
                                 <ProjectPaymentCard 
@@ -191,7 +191,7 @@ const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                                 />
                             ))}
                         </div>
-                    )}
+                    </section>
                 </div>
             </div>
         </Modal>

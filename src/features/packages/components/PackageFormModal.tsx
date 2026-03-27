@@ -1,8 +1,9 @@
 import React from 'react';
 import Modal from '@/shared/ui/Modal';
 import RupiahInput from '@/shared/form/RupiahInput';
-import { Trash2Icon, ChevronDownIcon } from '@/constants';
-import { Profile, REGIONS } from '@/types';
+import { Trash2Icon, ChevronDownIcon, PackageIcon, ClockIcon, UsersIcon, ListIcon } from '@/constants';
+import { Profile } from '@/types';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
 
 interface PackageFormModalProps {
     isOpen: boolean;
@@ -36,152 +37,166 @@ const PackageFormModal: React.FC<PackageFormModalProps> = ({
     expandedDurationIndex, setExpandedDurationIndex,
     onDurationDetailChange, addDurationDetail, removeDurationDetail,
     onListChange, addListItem, removeListItem,
-    profile, existingRegions, unionRegions
+    profile, unionRegions
 }) => {
     const hasValidOptions = Array.isArray(formData.durationOptions) && formData.durationOptions.some((o: any) => String(o.label || '').trim() !== '' && String(o.price || '') !== '');
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={editMode === 'new' ? 'Tambah Package Baru' : 'Edit Package'} size="3xl">
-            <form onSubmit={onSubmit} className="space-y-5 md:space-y-6 max-h-[70vh] overflow-y-auto pr-2 pb-4 form-compact form-compact--ios-scale">
-                {/* Section 1: Informasi Dasar */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Informasi Dasar Package</h4>
-                    <p className="text-xs text-brand-text-secondary mb-4">Masukkan nama dan harga Package layanan Anda.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="input-group">
-                            <input type="text" name="name" value={formData.name} onChange={onInputChange} className="input-field" placeholder=" " required />
-                            <label className="input-label">Nama Package</label>
+        <Modal isOpen={isOpen} onClose={onClose} title={editMode === 'new' ? 'Tambah Package Baru' : 'Edit Package'} size="4xl">
+            <form onSubmit={onSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto px-1 pb-4 custom-scrollbar">
+                
+                {/* Section 1: Informasi Utama */}
+                <CollapsibleSection title="Informasi Utama Package" defaultExpanded={true} variant="filled" icon={<PackageIcon className="w-4 h-4" />}>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="input-group">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Nama Package</label>
+                                <input type="text" name="name" value={formData.name} onChange={onInputChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" placeholder="Cth: Wedding Gold" required />
+                            </div>
+                            <div className="input-group">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Harga Dasar (IDR)</label>
+                                {hasValidOptions ? (
+                                    <input type="text" className="w-full px-4 py-3 rounded-xl border border-brand-border bg-brand-bg text-brand-text-secondary italic" value="Mengikut opsi durasi" disabled />
+                                ) : (
+                                    <RupiahInput value={formData.price.toString()} onChange={onPriceChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-black text-blue-600" placeholder="0" required />
+                                )}
+                            </div>
                         </div>
-                        {hasValidOptions ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="input-group">
-                                <input type="text" className="input-field" value="Mengikuti opsi durasi default" disabled placeholder=" " />
-                                <label className="input-label">Harga (mengikuti opsi default)</label>
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Kategori Package</label>
+                                <select name="category" value={formData.category} onChange={onInputChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-semibold" required>
+                                    <option value="">Pilih kategori...</option>
+                                    {(profile?.packageCategories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
                             </div>
-                        ) : (
                             <div className="input-group">
-                                <RupiahInput value={formData.price.toString()} onChange={onPriceChange} className="input-field" placeholder=" " required />
-                                <label className="input-label">Harga (IDR)</label>
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Wilayah (Opsional)</label>
+                                <input type="text" name="region" list="region-suggestions-pkg" value={formData.region} onChange={onInputChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white" placeholder="Cth: Jakarta" />
+                                <datalist id="region-suggestions-pkg">
+                                    {unionRegions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                </datalist>
                             </div>
-                        )}
+                        </div>
                     </div>
-                </section>
+                </CollapsibleSection>
 
                 {/* Section 2: Opsi Durasi */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Opsi Durasi & Harga (Opsional)</h4>
-                    <p className="text-xs text-brand-text-secondary mb-3">Tambahkan variasi durasi dengan harga berbeda.</p>
-                    {formData.durationOptions?.map((opt: any, index: number) => (
-                        <div key={index} className="mt-2 border border-brand-border/40 bg-white/40 rounded-xl overflow-hidden shadow-sm">
-                            <div className="grid grid-cols-1 md:grid-cols-5 gap-2 items-center p-3 border-b border-brand-border/30 bg-brand-surface/40">
-                                <input type="text" value={opt.label} onChange={e => onDurationOptionChange(index, 'label', e.target.value)} className="input-field md:col-span-2 bg-white/80" placeholder="Label (cth: 8 Jam)" />
-                                <RupiahInput value={opt.price.toString()} onChange={(raw) => onDurationOptionChange(index, 'price', raw)} className="input-field md:col-span-2 bg-white/80" placeholder="Harga" />
-                                <div className="flex items-center justify-end gap-1 md:gap-2">
-                                    <label className="flex items-center gap-1 text-sm text-brand-text-secondary"><input type="radio" name="durationDefault" checked={!!opt.default} onChange={() => onDurationOptionChange(index, 'default', true)} /> Default</label>
-                                    <button type="button" onClick={() => setExpandedDurationIndex(expandedDurationIndex === index ? null : index)} className="p-1.5 rounded hover:bg-brand-input text-brand-accent">
-                                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedDurationIndex === index ? 'rotate-180' : ''}`} />
-                                    </button>
-                                    <button type="button" onClick={() => removeDurationOption(index)} className="p-2 text-brand-danger"><Trash2Icon className="w-4 h-4" /></button>
+                <CollapsibleSection title="Opsi Durasi & Harga" defaultExpanded={true} variant="filled" icon={<ClockIcon className="w-4 h-4" />}>
+                    <div className="space-y-4">
+                        <p className="text-[10px] text-brand-text-secondary font-medium uppercase tracking-wider mb-2">Tambahkan variasi durasi dengan harga berbeda untuk package ini.</p>
+                        {formData.durationOptions?.map((opt: any, index: number) => (
+                            <div key={index} className="border border-brand-border rounded-2xl overflow-hidden bg-white shadow-sm">
+                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center p-3 bg-brand-bg/30">
+                                    <div className="md:col-span-4">
+                                        <input type="text" value={opt.label} onChange={e => onDurationOptionChange(index, 'label', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-brand-border text-sm font-bold" placeholder="Label (cth: 8 Jam)" />
+                                    </div>
+                                    <div className="md:col-span-4">
+                                        <RupiahInput value={opt.price.toString()} onChange={(raw) => onDurationOptionChange(index, 'price', raw)} className="w-full px-3 py-2 rounded-lg border border-brand-border text-sm font-black text-blue-600" placeholder="Harga" />
+                                    </div>
+                                    <div className="md:col-span-4 flex items-center justify-end gap-2 text-xs">
+                                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-brand-text-secondary">
+                                            <input type="radio" name="durationDefault" checked={!!opt.default} onChange={() => onDurationOptionChange(index, 'default', true)} className="text-blue-600" /> Default
+                                        </label>
+                                        <button type="button" onClick={() => setExpandedDurationIndex(expandedDurationIndex === index ? null : index)} className="p-2 rounded-lg hover:bg-white text-blue-500 transition-colors">
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedDurationIndex === index ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        <button type="button" onClick={() => removeDurationOption(index)} className="p-2 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
+                                            <Trash2Icon className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
+                                {expandedDurationIndex === index && (
+                                    <div className="p-4 border-t border-brand-border bg-white space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="input-group">
+                                            <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Jumlah Tim (Khusus opsi ini)</label>
+                                            <input type="text" value={opt.photographers || ''} onChange={e => onDurationOptionChange(index, 'photographers', e.target.value)} className="w-full px-4 py-2 rounded-xl border border-brand-border bg-brand-bg/20" placeholder="Cth: 2 Fotografer, 1 Videografer" />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-2 block">Deskripsi Detail</label>
+                                                <div className="space-y-2">
+                                                    {(opt.digitalItems || ['']).map((item: string, i: number) => (
+                                                        <div key={i} className="flex gap-2">
+                                                            <input type="text" value={item} onChange={e => onDurationDetailChange(index, 'digital', i, '', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-brand-border text-xs" placeholder="Deskripsi..." />
+                                                            <button type="button" onClick={() => removeDurationDetail(index, 'digital', i)} className="text-red-400 p-1 hover:text-red-600"><Trash2Icon className="w-3.5 h-3.5" /></button>
+                                                        </div>
+                                                    ))}
+                                                    <button type="button" onClick={() => addDurationDetail(index, 'digital')} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter hover:underline">+ Tambah Detail</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-2 block">Vendor / Item Fisik</label>
+                                                <div className="space-y-2">
+                                                    {(opt.physicalItems || [{ name: '', price: 0 }]).map((item: any, i: number) => (
+                                                        <div key={i} className="flex gap-2">
+                                                            <input type="text" value={item.name || ''} onChange={e => onDurationDetailChange(index, 'physical', i, 'name', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-brand-border text-xs" placeholder="Nama Vendor/Barang" />
+                                                            <button type="button" onClick={() => removeDurationDetail(index, 'physical', i)} className="text-red-400 p-1 hover:text-red-600"><Trash2Icon className="w-3.5 h-3.5" /></button>
+                                                        </div>
+                                                    ))}
+                                                    <button type="button" onClick={() => addDurationDetail(index, 'physical')} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter hover:underline">+ Tambah Vendor</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            {expandedDurationIndex === index && (
-                                <div className="p-3 border-t border-brand-border bg-brand-surface space-y-3">
-                                    <div className="input-group">
-                                        <input type="text" value={opt.photographers || ''} onChange={e => onDurationOptionChange(index, 'photographers', e.target.value)} className="input-field" placeholder=" " />
-                                        <label className="input-label">Jumlah Tim</label>
+                        ))}
+                        <button type="button" onClick={addDurationOption} className="w-full py-3 border-2 border-dashed border-brand-border rounded-2xl text-xs font-bold text-brand-text-secondary hover:border-blue-400 hover:text-blue-500 transition-all">+ Tambah Opsi Durasi Baru</button>
+                    </div>
+                </CollapsibleSection>
+
+                {/* Section 3: Visual & Tim */}
+                <CollapsibleSection title="Visual & Detail Tim" defaultExpanded={false} variant="filled" icon={<UsersIcon className="w-4 h-4" />}>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="input-group">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-1 block">Default Jumlah Tim</label>
+                                <input type="text" name="photographers" value={formData.photographers} onChange={onInputChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white" placeholder="Cth: 2 Fotografer" />
+                            </div>
+                            <div className="input-group">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-blue-600 mb-1 block">Gambar Sampul</label>
+                                <input type="file" onChange={onCoverImageChange} className="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" />
+                            </div>
+                        </div>
+                    </div>
+                </CollapsibleSection>
+
+                {/* Section 4: Deskripsi & Vendor */}
+                <CollapsibleSection title="Deskripsi & Vendor (Default)" defaultExpanded={false} variant="filled" icon={<ListIcon className="w-4 h-4" />}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-3 block">Kelengkapan Package</label>
+                            <div className="space-y-2">
+                                {formData.digitalItems.map((item: string, index: number) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <input type="text" value={item} onChange={e => onListChange('digital', index, '', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-brand-border text-xs" placeholder="Cth: Box Kayu Eksklusif" />
+                                        <button type="button" onClick={() => removeListItem('digital', index)} className="p-2 text-red-400 hover:text-red-600 transition-colors"><Trash2Icon className="w-4 h-4" /></button>
                                     </div>
-                                    <div>
-                                        <p className="text-xs text-brand-text-secondary mb-1">Deskripsi Package</p>
-                                        {(opt.digitalItems || ['']).map((item: string, i: number) => (
-                                            <div key={i} className="flex gap-2 mt-1">
-                                                <input type="text" value={item} onChange={e => onDurationDetailChange(index, 'digital', i, '', e.target.value)} className="input-field flex-grow text-sm" placeholder="Deskripsi item..." />
-                                                <button type="button" onClick={() => removeDurationDetail(index, 'digital', i)} className="p-2 text-brand-danger"><Trash2Icon className="w-4 h-4" /></button>
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={() => addDurationDetail(index, 'digital')} className="text-xs font-semibold text-brand-accent mt-1">+ Tambah Deskripsi</button>
+                                ))}
+                                <button type="button" onClick={() => addListItem('digital')} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">+ Tambah Kelengkapan</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary mb-3 block">Rincian Vendor</label>
+                            <div className="space-y-2">
+                                {formData.physicalItems.map((item: any, index: number) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <input type="text" value={item.name} onChange={e => onListChange('physical', index, 'name', e.target.value)} className="w-full px-3 py-2 rounded-xl border border-brand-border text-xs" placeholder="Nama Vendor" />
+                                        <button type="button" onClick={() => removeListItem('physical', index)} className="p-2 text-red-400 hover:text-red-600 transition-colors"><Trash2Icon className="w-4 h-4" /></button>
                                     </div>
-                                    <div>
-                                        <p className="text-xs text-brand-text-secondary mb-1">Vendor (Allpackage)</p>
-                                        {(opt.physicalItems || [{ name: '', price: 0 }]).map((item: any, i: number) => (
-                                            <div key={i} className="flex gap-2 mt-1">
-                                                <input type="text" value={item.name || ''} onChange={e => onDurationDetailChange(index, 'physical', i, 'name', e.target.value)} className="input-field flex-grow text-sm" placeholder="Nama vendor/item" />
-                                                <button type="button" onClick={() => removeDurationDetail(index, 'physical', i)} className="p-2 text-brand-danger"><Trash2Icon className="w-4 h-4" /></button>
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={() => addDurationDetail(index, 'physical')} className="text-xs font-semibold text-brand-accent mt-1">+ Tambah Vendor</button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                    <button type="button" onClick={addDurationOption} className="text-sm font-semibold text-brand-accent mt-3">+ Tambah Opsi Durasi</button>
-                </section>
-
-                {/* Section 3: Kategori & Wilayah */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Kategori & Wilayah</h4>
-                    <div className="input-group">
-                        <select name="category" value={formData.category} onChange={onInputChange} className="input-field" required>
-                            <option value="">Pilih kategori...</option>
-                            {(profile?.packageCategories || []).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                        <label className="input-label">Kategori</label>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div className="input-group">
-                            <input type="text" name="region" list="region-suggestions-pkg" value={formData.region} onChange={onInputChange} className="input-field" placeholder=" " />
-                            <label className="input-label">Wilayah (opsional)</label>
-                            <datalist id="region-suggestions-pkg">
-                                {unionRegions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                            </datalist>
+                                ))}
+                                <button type="button" onClick={() => addListItem('physical')} className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">+ Tambah Vendor</button>
+                            </div>
                         </div>
                     </div>
-                </section>
+                </CollapsibleSection>
 
-                {/* Section 4: Detail Tim */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Detail Tim</h4>
-                    <div className="input-group">
-                        <input type="text" name="photographers" value={formData.photographers} onChange={onInputChange} className="input-field" placeholder=" " />
-                        <label className="input-label">Jumlah Tim</label>
-                    </div>
-                </section>
-
-                {/* Section 5: Cover Image */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Gambar Sampul</h4>
-                    <div className="input-group">
-                        <label className="input-label !static !-top-4 !text-brand-accent">Cover Image</label>
-                        <input type="file" onChange={onCoverImageChange} className="input-field" accept="image/*" />
-                    </div>
-                </section>
-
-                {/* Section 6: Deskripsi Package */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Deskripsi Package</h4>
-                    {formData.digitalItems.map((item: string, index: number) => (
-                        <div key={index} className="flex items-center gap-2 mt-2">
-                            <input type="text" value={item} onChange={e => onListChange('digital', index, '', e.target.value)} className="input-field flex-grow" placeholder="Deskripsi..." />
-                            <button type="button" onClick={() => removeListItem('digital', index)} className="p-2 text-brand-danger"><Trash2Icon className="w-4 h-4" /></button>
-                        </div>
-                    ))}
-                    <button type="button" onClick={() => addListItem('digital')} className="text-sm font-semibold text-brand-accent mt-3">+ Tambah Item Deskripsi</button>
-                </section>
-
-                {/* Section 7: Vendor */}
-                <section className="bg-white/40 md:bg-transparent rounded-2xl md:rounded-none p-4 md:p-0 border md:border-0 border-brand-border/40">
-                    <h4 className="text-sm md:text-base font-semibold text-gradient border-b border-brand-border/40 pb-2 mb-4">Vendor (Allpackage)</h4>
-                    {formData.physicalItems.map((item: any, index: number) => (
-                        <div key={index} className="flex items-center gap-2 mt-2">
-                            <input type="text" value={item.name} onChange={e => onListChange('physical', index, 'name', e.target.value)} className="input-field flex-grow" placeholder="Nama Vendor/Item" />
-                            <button type="button" onClick={() => removeListItem('physical', index)} className="p-2 text-brand-danger"><Trash2Icon className="w-4 h-4" /></button>
-                        </div>
-                    ))}
-                    <button type="button" onClick={() => addListItem('physical')} className="text-sm font-semibold text-brand-accent mt-3">+ Tambah Vendor</button>
-                </section>
-
-                <div className="flex justify-end gap-3 pt-4 mt-6 border-t border-brand-border/40 sticky -bottom-4 bg-white/90 backdrop-blur-xl p-4">
-                    <button type="button" onClick={onClose} className="button-secondary">Batal</button>
-                    <button type="submit" className="button-primary">{editMode === 'new' ? 'Simpan Package' : 'Update Package'}</button>
+                <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-brand-border sticky -bottom-4 bg-white/90 backdrop-blur-xl p-4 -mx-1">
+                    <button type="button" onClick={onClose} className="px-8 py-3 rounded-xl font-bold text-brand-text-secondary hover:bg-brand-bg transition-colors">Batal</button>
+                    <button type="submit" className="px-10 py-3 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                        {editMode === 'new' ? 'Simpan Package' : 'Update Package'}
+                    </button>
                 </div>
             </form>
         </Modal>

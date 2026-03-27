@@ -1,7 +1,8 @@
 import React from 'react';
 import { Profile } from '@/types';
 import { CategoryManager } from '@/features/settings/components/CategoryManager';
-import { CashIcon } from '@/constants';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
+import { CreditCardIcon, DollarSignIcon } from '@/constants';
 
 interface FinanceSettingsTabProps {
     profile: Profile;
@@ -30,26 +31,47 @@ export const FinanceSettingsTab: React.FC<FinanceSettingsTabProps> = ({
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6">
-                <CategoryManager
-                    title="Kategori Pemasukan" placeholder="Tambah Kategori (e.g. Booking Fee)" categories={profile.incomeCategories || []}
-                    inputValue={incomeCategoryInput} onInputChange={setIncomeCategoryInput}
-                    onAddOrUpdate={() => handleUpdate('incomeCategories', incomeCategoryInput, setIncomeCategoryInput, profile.incomeCategories || [], editingIncomeCategory, setEditingIncomeCategory)}
-                    onEdit={(cat) => { setEditingIncomeCategory(cat); setIncomeCategoryInput(cat); }}
-                    onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('incomeCategories', (profile.incomeCategories || []).filter(c => c !== cat))}
-                    editingValue={editingIncomeCategory} onCancelEdit={() => { setEditingIncomeCategory(null); setIncomeCategoryInput(''); }}
-                />
-            </div>
-            <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6">
-                <CategoryManager
-                    title="Kategori Pengeluaran" placeholder="Tambah Kategori (e.g. Gaji Team)" categories={profile.expenseCategories || []}
-                    inputValue={expenseCategoryInput} onInputChange={setExpenseCategoryInput}
-                    onAddOrUpdate={() => handleUpdate('expenseCategories', expenseCategoryInput, setExpenseCategoryInput, profile.expenseCategories || [], editingExpenseCategory, setEditingExpenseCategory)}
-                    onEdit={(cat) => { setEditingExpenseCategory(cat); setExpenseCategoryInput(cat); }}
-                    onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('expenseCategories', (profile.expenseCategories || []).filter(c => c !== cat))}
-                    editingValue={editingExpenseCategory} onCancelEdit={() => { setEditingExpenseCategory(null); setExpenseCategoryInput(''); }}
-                />
+        <div className="space-y-6 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CollapsibleSection 
+                    title="Kategori Pemasukan" 
+                    defaultExpanded={true} 
+                    variant="filled"
+                    icon={<DollarSignIcon className="w-4 h-4" />}
+                >
+                    <CategoryManager
+                        title="Daftar Kategori Pemasukan" 
+                        placeholder="Tambah Kategori (e.g. Booking Fee)" 
+                        categories={profile.incomeCategories || []}
+                        inputValue={incomeCategoryInput} 
+                        onInputChange={setIncomeCategoryInput}
+                        onAddOrUpdate={() => handleUpdate('incomeCategories', incomeCategoryInput, setIncomeCategoryInput, profile.incomeCategories || [], editingIncomeCategory, setEditingIncomeCategory)}
+                        onEdit={(cat) => { setEditingIncomeCategory(cat); setIncomeCategoryInput(cat); }}
+                        onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('incomeCategories', (profile.incomeCategories || []).filter(c => c !== cat))}
+                        editingValue={editingIncomeCategory} 
+                        onCancelEdit={() => { setEditingIncomeCategory(null); setIncomeCategoryInput(''); }}
+                    />
+                </CollapsibleSection>
+
+                <CollapsibleSection 
+                    title="Kategori Pengeluaran" 
+                    defaultExpanded={true} 
+                    variant="filled"
+                    icon={<CreditCardIcon className="w-4 h-4" />}
+                >
+                    <CategoryManager
+                        title="Daftar Kategori Pengeluaran" 
+                        placeholder="Tambah Kategori (e.g. Gaji Team)" 
+                        categories={profile.expenseCategories || []}
+                        inputValue={expenseCategoryInput} 
+                        onInputChange={setExpenseCategoryInput}
+                        onAddOrUpdate={() => handleUpdate('expenseCategories', expenseCategoryInput, setExpenseCategoryInput, profile.expenseCategories || [], editingExpenseCategory, setEditingExpenseCategory)}
+                        onEdit={(cat) => { setEditingExpenseCategory(cat); setExpenseCategoryInput(cat); }}
+                        onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('expenseCategories', (profile.expenseCategories || []).filter(c => c !== cat))}
+                        editingValue={editingExpenseCategory} 
+                        onCancelEdit={() => { setEditingExpenseCategory(null); setExpenseCategoryInput(''); }}
+                    />
+                </CollapsibleSection>
             </div>
         </div>
     );

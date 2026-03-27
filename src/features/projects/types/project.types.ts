@@ -35,11 +35,10 @@ export type {
     ProjectStatusConfig,
     AssignedTeamMember,
     CustomCost,
-    PaymentStatus,
     WeddingDayChecklist
 };
 
-export { TransactionType };
+export { TransactionType, PaymentStatus };
 
 
 

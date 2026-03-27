@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EyeIcon, PencilIcon, Trash2Icon, ArrowUpIcon, ArrowDownIcon } from '@/constants';
 import { ClientStatus, Project } from '@/types';
-import { ExtendedClient } from '@/features/clients/types/clients.types';
+import { ExtendedClient } from '@/features/clients/types';
 
 interface ClientInactiveListProps {
     clients: ExtendedClient[];
@@ -16,7 +16,7 @@ export const ClientInactiveList: React.FC<ClientInactiveListProps> = ({
     onEditClient,
     onDeleteClient
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
     const inactiveClients = clients.filter(c => c.status !== ClientStatus.ACTIVE);
 
     return (

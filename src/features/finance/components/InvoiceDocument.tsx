@@ -261,8 +261,10 @@ const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
           <div className="text-center">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Hormat Kami,</p>
             <div className="h-16 flex items-center justify-center">
-              {profile.signatureBase64 ? (
-                <img src={profile.signatureBase64} alt="Tanda Tangan" className="max-h-full object-contain grayscale" />
+              {project.invoiceSignature ? (
+                <img src={project.invoiceSignature} alt="Tanda Tangan" className="max-h-full object-contain grayscale" />
+              ) : profile.signatureBase64 ? (
+                <img src={profile.signatureBase64} alt="Authorized" className="max-h-full object-contain grayscale" />
               ) : (
                 <div className="h-px w-24 bg-slate-200 mx-auto mt-10 print:bg-slate-300" />
               )}

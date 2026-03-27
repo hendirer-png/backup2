@@ -450,8 +450,8 @@ const ClientReports: React.FC<ClientReportsProps> = ({ clients, leads, projects,
             <Modal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} title="Tambah Masukan Pengantin Manual">
                 <form onSubmit={handleManualFeedbackSubmit} className="space-y-4">
                     <div className="input-group">
-                        <input type="text" id="clientName" name="clientName" value={manualFeedbackForm.clientName} onChange={handleManualFeedbackChange} className="input-field" placeholder=" " required />
                         <label htmlFor="clientName" className="input-label">Nama Pengantin</label>
+                        <input type="text" id="clientName" name="clientName" value={manualFeedbackForm.clientName} onChange={handleManualFeedbackChange} className="input-field" placeholder=" " required />
                     </div>
                     <div>
                         <label className="text-sm text-brand-text-secondary">Rating</label>
@@ -464,8 +464,8 @@ const ClientReports: React.FC<ClientReportsProps> = ({ clients, leads, projects,
                         </div>
                     </div>
                     <div className="input-group">
-                        <textarea id="feedback" name="feedback" value={manualFeedbackForm.feedback} onChange={handleManualFeedbackChange} className="input-field" placeholder=" " required rows={4}></textarea>
                         <label htmlFor="feedback" className="input-label">Saran / Masukan</label>
+                        <textarea id="feedback" name="feedback" value={manualFeedbackForm.feedback} onChange={handleManualFeedbackChange} className="input-field" placeholder=" " required rows={4}></textarea>
                     </div>
                     <div className="flex justify-end items-center gap-3 pt-4 border-t border-brand-border sticky bottom-0 bg-brand-surface">
                         <button type="button" onClick={() => setIsFeedbackModalOpen(false)} className="button-secondary">Batal</button>

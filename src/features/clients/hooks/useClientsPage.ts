@@ -85,6 +85,8 @@ export const useClientsPage = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('Semua Status');
     const [typeFilter, setTypeFilter] = useState<string>('Semua Tipe');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
     // --- Effects ---
@@ -140,10 +142,15 @@ export const useClientsPage = ({
             const statusMatch = statusFilter === 'Semua Status' || client.overallPaymentStatus === statusFilter;
             const typeMatch = typeFilter === 'Semua Tipe' || client.clientType === typeFilter;
             
-            if (activeTab === 'inactive') return searchMatch && statusMatch && typeMatch && client.status === ClientStatus.INACTIVE;
-            if (activeTab === 'unpaid') return searchMatch && statusMatch && typeMatch && client.balanceDue > 0;
+            // Date Filter (using client.since as the primary reference)
+            const clientDate = new Date(client.since);
+            const startMatch = !startDate || clientDate >= new Date(startDate);
+            const endMatch = !endDate || clientDate <= new Date(endDate);
             
-            return searchMatch && statusMatch && typeMatch;
+            if (activeTab === 'inactive') return searchMatch && statusMatch && typeMatch && startMatch && endMatch && client.status === ClientStatus.INACTIVE;
+            if (activeTab === 'unpaid') return searchMatch && statusMatch && typeMatch && startMatch && endMatch && client.balanceDue > 0;
+            
+            return searchMatch && statusMatch && typeMatch && startMatch && endMatch;
         });
 
         if (sortConfig) {
@@ -157,7 +164,7 @@ export const useClientsPage = ({
         }
 
         return result;
-    }, [allClientData, searchQuery, statusFilter, typeFilter, sortConfig, activeTab]);
+    }, [allClientData, searchQuery, statusFilter, typeFilter, startDate, endDate, sortConfig, activeTab]);
 
     const stats = useMemo(() => {
         const locations = allClientData.flatMap(c => c.projects.map(p => p.location)).filter(Boolean);
@@ -471,6 +478,8 @@ export const useClientsPage = ({
         searchQuery, setSearchQuery,
         statusFilter, setStatusFilter,
         typeFilter, setTypeFilter,
+        startDate, setStartDate,
+        endDate, setEndDate,
         sortConfig, setSortConfig,
         filteredClientData,
         stats,

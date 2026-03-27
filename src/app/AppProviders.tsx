@@ -16,9 +16,10 @@ import {
   AddOn,
   TeamProjectPayment,
   TeamPaymentRecord,
-  ViewType,
   NavigationAction,
   CardType,
+  Contract,
+  ViewType,
 } from "@/types";
 import { supabase } from "@/lib/supabaseClient";
 import { useAppData } from "@/hooks/useAppData";
@@ -44,6 +45,8 @@ interface AppContextType {
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  contracts: Contract[];
+  setContracts: React.Dispatch<React.SetStateAction<Contract[]>>;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   teamMembers: TeamMember[];
@@ -136,6 +139,7 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   // Data State
   const [users, setUsers] = useState<User[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -231,6 +235,17 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
     }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [appData.clients, appData.loaded.clients]);
+
+  // Sync contracts + Realtime (optional, can just sync)
+  useEffect(() => {
+    if (appData.loaded.contracts) setContracts(appData.contracts);
+    const channel = supabase.channel("realtime-contracts").on("postgres_changes", { event: "*", schema: "public", table: "contracts" }, (payload) => {
+      if (payload.eventType === "INSERT") setContracts((prev) => [payload.new as Contract, ...prev]);
+      if (payload.eventType === "UPDATE") setContracts((prev) => prev.map((c) => c.id === payload.new.id ? ({ ...c, ...payload.new } as Contract) : c));
+      if (payload.eventType === "DELETE") setContracts((prev) => prev.filter((c) => c.id !== (payload.old as any).id));
+    }).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [appData.contracts, appData.loaded.contracts]);
 
   // Sync team members + Realtime
   useEffect(() => {
@@ -370,6 +385,7 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isAuthenticated) return;
     appData.loadClients();
     appData.loadProjects();
+    appData.loadContracts();
     appData.loadTransactions();
     appData.loadTeamMembers();
     appData.loadLeads();
@@ -387,6 +403,7 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
     isSearchOpen, setIsSearchOpen,
     users, setUsers,
     clients, setClients,
+    contracts, setContracts,
     projects, setProjects,
     teamMembers, setTeamMembers,
     transactions, setTransactions,
@@ -406,7 +423,7 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
     handleMarkAllAsRead
   }), [
     isAuthenticated, currentUser, activeView, notification, showNotification, addNotification,
-    initialAction, isSidebarOpen, isSearchOpen, users, clients, projects, teamMembers,
+    initialAction, isSidebarOpen, isSearchOpen, users, clients, contracts, projects, teamMembers,
     transactions, teamProjectPayments, teamPaymentRecords, pockets, profile, leads, cards,
     clientFeedback, notifications, promoCodes, packages, addOns, appData, handleMarkAsRead, handleMarkAllAsRead
   ]);

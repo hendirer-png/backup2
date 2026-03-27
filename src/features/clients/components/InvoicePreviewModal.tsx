@@ -110,9 +110,15 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-slate-200 bg-white flex flex-wrap justify-center sm:justify-end gap-3 rounded-b-lg shrink-0">
-                    {onSign && !profile.signatureBase64 && (
+                    {onSign && !project.invoiceSignature && (
                         <button
-                            onClick={() => setIsSignatureModalOpen(true)}
+                            onClick={() => {
+                                if (profile.signatureBase64) {
+                                    onSign(profile.signatureBase64);
+                                } else {
+                                    setIsSignatureModalOpen(true);
+                                }
+                            }}
                             className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
                         >
                             <PencilIcon className="w-4 h-4" />

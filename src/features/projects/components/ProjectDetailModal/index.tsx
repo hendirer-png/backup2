@@ -9,14 +9,11 @@ import {
     Project, 
     Profile, 
     Package, 
-    WeddingDayChecklist, 
     AssignedTeamMember, 
     TeamProjectPayment,
     Client
 } from '@/features/projects/types/project.types';
-import { useProjectChecklist } from '@/features/projects/hooks/useProjectChecklist';
 import ProjectDetailsTab from '@/features/projects/components/ProjectDetailModal/ProjectDetailsTab';
-import ProjectChecklistTab from '@/features/projects/components/ProjectDetailModal/ProjectChecklistTab';
 import ProjectFilesTab from '@/features/projects/components/ProjectDetailModal/ProjectFilesTab';
 import { updateProject } from '@/services/projects';
 import { getProgressForStatus } from '@/features/projects/utils/project.utils';
@@ -34,7 +31,6 @@ interface ProjectDetailModalProps {
     handleOpenForm: (mode: 'edit', project: Project) => void;
     handleOpenBriefingModal: () => void;
     clients: Client[];
-    onOpenSharePreview: (projectId: string, checklist: WeddingDayChecklist[]) => void;
     showNotification: (msg: string) => void;
 
 }
@@ -50,7 +46,6 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
     clients,
     handleOpenForm,
     handleOpenBriefingModal,
-    onOpenSharePreview,
     showNotification
 }) => {
     const teamByCategory = React.useMemo(() => {
@@ -64,14 +59,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         return categories;
     }, [selectedProject.team]);
 
-    const [detailTab, setDetailTab] = useState<'details' | 'checklist' | 'files'>('checklist');
-    const [checklistItems, setChecklistItems] = useState<WeddingDayChecklist[]>([]);
-
-    const checklistHandlers = useProjectChecklist(
-        selectedProject.id,
-        (items) => setChecklistItems(items),
-        showNotification
-    );
+    const [detailTab, setDetailTab] = useState<'details' | 'files'>('details');
 
     const handleStatusUpdate = async (newStatus: string) => {
         try {
@@ -151,7 +139,6 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 <div className="flex-shrink-0 px-6 md:px-8 py-4 border-b border-brand-border bg-brand-bg/30">
                     <div className="flex gap-2 p-1.5 bg-brand-surface rounded-[1.25rem] border border-brand-border max-w-fit">
                         {[
-                            { id: 'checklist', label: 'Checklist Hari H', icon: LayoutIcon },
                             { id: 'details', label: 'Informasi Detail', icon: InfoIcon },
                             { id: 'files', label: 'File & Tautan', icon: FolderIcon },
                         ].map((tab) => (
@@ -165,9 +152,8 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                                 }`}
                             >
                                 <tab.icon className={`w-3.5 h-3.5 ${detailTab === tab.id ? 'animate-pulse' : ''}`} />
-                                <span className={tab.id === 'checklist' ? 'relative' : ''}>
+                                <span>
                                     {tab.label}
-                                    {tab.id === 'checklist' && <span className="absolute -top-1 -right-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>}
                                 </span>
                             </button>
                         ))}
@@ -176,17 +162,6 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
                 {/* Modal Content */}
                 <div className="flex-grow overflow-y-auto p-6 md:p-8 custom-scrollbar">
-                    {detailTab === 'checklist' && (
-                        <ProjectChecklistTab
-                            selectedProject={selectedProject}
-                            checklistItems={checklistItems}
-                            isInitializingChecklist={checklistHandlers.isInitializingChecklist}
-                            profile={profile}
-                            handlers={checklistHandlers}
-                            onOpenSharePreview={onOpenSharePreview}
-                            showNotification={showNotification}
-                        />
-                    )}
                     {detailTab === 'details' && (
                         <ProjectDetailsTab
                             selectedProject={selectedProject}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Transaction, Profile, Project, Client, TransactionType } from '@/types';
-import { DownloadIcon, Share2Icon } from '@/constants';
+import { DownloadIcon, Share2Icon, PencilIcon } from '@/constants';
 import Modal from '@/shared/ui/Modal';
+import SignaturePad from '@/shared/ui/SignaturePad';
 
 interface ReceiptPreviewModalProps {
     isOpen: boolean;
@@ -10,6 +11,8 @@ interface ReceiptPreviewModalProps {
     project?: Project | null;
     client?: Client | null;
     profile: Profile;
+    onEdit?: () => void;
+    onSign?: (signature: string) => void;
 }
 
 export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
@@ -18,8 +21,11 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
     transaction,
     project,
     client,
-    profile
+    profile,
+    onEdit,
+    onSign
 }) => {
+    const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
     if (!isOpen) return null;
 
     const isExpense = transaction.type === TransactionType.EXPENSE;
@@ -223,6 +229,35 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-slate-200 bg-white flex flex-wrap justify-center sm:justify-end gap-3 rounded-b-lg shrink-0">
+                    {onSign && !transaction.vendorSignature && (
+                        <button
+                            onClick={() => {
+                                if (profile.signatureBase64) {
+                                    onSign(profile.signatureBase64);
+                                } else {
+                                    setIsSignatureModalOpen(true);
+                                }
+                            }}
+                            className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
+                        >
+                            <PencilIcon className="w-4 h-4" />
+                            <span className="text-sm">Tanda Tangani</span>
+                        </button>
+                    )}
+
+                    {onEdit && (
+                        <button
+                            onClick={() => {
+                                onClose();
+                                onEdit();
+                            }}
+                            className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
+                        >
+                            <PencilIcon className="w-4 h-4" />
+                            <span className="text-sm">Edit</span>
+                        </button>
+                    )}
+
                     <button
                         onClick={handleDownloadPDF}
                         className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
@@ -239,6 +274,22 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
                         <span className="text-sm">Kirim ke WA</span>
                     </button>
                 </div>
+
+                {/* Signature Document Wrapper */}
+                <Modal
+                    isOpen={isSignatureModalOpen}
+                    onClose={() => setIsSignatureModalOpen(false)}
+                    title="Tanda Tangan Authorized"
+                    size="lg"
+                >
+                    <SignaturePad 
+                        onSave={(sig: string) => {
+                            if (onSign) onSign(sig);
+                            setIsSignatureModalOpen(false);
+                        }} 
+                        onClose={() => setIsSignatureModalOpen(false)} 
+                    />
+                </Modal>
             </div>
         </Modal>
     );

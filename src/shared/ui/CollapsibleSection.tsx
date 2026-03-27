@@ -8,6 +8,7 @@ interface CollapsibleSectionProps {
     status?: 'valid' | 'warning' | 'error' | 'info';
     statusText?: string;
     icon?: React.ReactNode;
+    variant?: 'default' | 'filled';
 }
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -17,23 +18,26 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     status,
     statusText,
     icon,
+    variant = 'default',
 }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    const isFilled = variant === 'filled';
     
     const getStatusIcon = () => {
         switch (status) {
             case 'valid':
-                return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
+                return <CheckCircleIcon className={`w-4 h-4 ${isFilled ? 'text-white' : 'text-green-500'}`} />;
             case 'warning':
-                return <AlertCircleIcon className="w-4 h-4 text-orange-500" />;
+                return <AlertCircleIcon className={`w-4 h-4 ${isFilled ? 'text-white' : 'text-orange-500'}`} />;
             case 'error':
-                return <AlertCircleIcon className="w-4 h-4 text-red-500" />;
+                return <AlertCircleIcon className={`w-4 h-4 ${isFilled ? 'text-white' : 'text-red-500'}`} />;
             default:
                 return null;
         }
     };
     
     const getStatusColor = () => {
+        if (isFilled) return 'text-white/80';
         switch (status) {
             case 'valid':
                 return 'text-green-500';
@@ -49,25 +53,33 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     };
     
     return (
-        <div className="bg-brand-surface md:bg-transparent rounded-2xl md:rounded-none border md:border-0 border-brand-border overflow-hidden">
+        <div className={`rounded-2xl border overflow-hidden transition-all duration-300 ${
+            isFilled ? 'bg-brand-surface border-blue-600/30' : 'bg-brand-surface md:bg-transparent border-brand-border md:border-0'
+        }`}>
             {/* Header */}
             <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center justify-between p-4 md:p-0 md:pb-2 hover:bg-brand-input md:hover:bg-transparent transition-colors border-b border-brand-border"
+                className={`w-full flex items-center justify-between p-4 transition-all ${
+                    isFilled 
+                        ? 'bg-blue-600 text-white border-b border-blue-700/50 shadow-lg shadow-blue-600/20' 
+                        : 'md:p-0 md:pb-2 hover:bg-brand-input md:hover:bg-transparent border-b border-brand-border'
+                }`}
             >
                 <div className="flex items-center gap-3">
                     {icon && (
-                        <div className="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center text-brand-accent">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            isFilled ? 'bg-white/20 text-white' : 'bg-brand-accent/10 text-brand-accent'
+                        }`}>
                             {icon}
                         </div>
                     )}
                     <div className="text-left">
-                        <h4 className="text-sm md:text-base font-semibold text-gradient">
+                        <h4 className={`text-sm md:text-base font-bold tracking-wide ${isFilled ? 'text-white' : 'text-gradient'}`}>
                             {title}
                         </h4>
                         {statusText && (
-                            <p className={`text-xs ${getStatusColor()} mt-0.5`}>
+                            <p className={`text-[10px] md:text-xs font-medium uppercase tracking-tight ${getStatusColor()} mt-0.5`}>
                                 {statusText}
                             </p>
                         )}
@@ -77,7 +89,9 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
                 <div className="flex items-center gap-2">
                     {status && getStatusIcon()}
                     <ChevronDownIcon 
-                        className={`w-5 h-5 text-brand-text-secondary transition-transform duration-200 ${
+                        className={`w-5 h-5 transition-transform duration-300 ${
+                            isFilled ? 'text-white/80' : 'text-brand-text-secondary'
+                        } ${
                             isExpanded ? 'rotate-180' : ''
                         }`}
                     />
@@ -86,11 +100,11 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             
             {/* Content */}
             <div 
-                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
                     isExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'
                 }`}
             >
-                <div className="p-4 md:p-0 md:pt-5 space-y-5">
+                <div className={`p-4 md:p-5 space-y-5 ${isFilled ? '' : 'md:px-0 md:pt-5'}`}>
                     {children}
                 </div>
             </div>

@@ -173,10 +173,6 @@ const ProjectsPage: React.FC<ProjectsProps> = ({
                     clients={clients}
                     handleOpenForm={actions.handleOpenForm}
                     handleOpenBriefingModal={() => actions.handleOpenBriefingModal(actions.selectedProject!)}
-                    onOpenSharePreview={(projectId, checklist) => {
-                        // Handle checklist sharing logic
-                        showNotification('Gagal memproses preview checklist.');
-                    }}
                     showNotification={showNotification}
                 />
             )}

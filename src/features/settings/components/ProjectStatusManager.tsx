@@ -3,6 +3,7 @@ import Modal from '@/shared/ui/Modal';
 import { PencilIcon, PlusIcon, Trash2Icon } from '@/constants';
 import { ProjectStatusConfig, SubStatusConfig, Project, Profile } from '@/types';
 import { upsertProfile } from '@/services/profile';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
 
 interface ProjectStatusManagerProps {
     config: ProjectStatusConfig[];
@@ -127,35 +128,68 @@ export const ProjectStatusManager: React.FC<ProjectStatusManagerProps> = ({ conf
                 ))}
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalMode === 'add' ? 'Tambah Status Baru' : `Edit Status: ${selectedStatus?.name}`}>
-                <form onSubmit={handleSubmit} className="space-y-4 form-compact form-compact--ios-scale">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="input-group md:col-span-2"><input type="text" id="name" name="name" value={form.name} onChange={handleFormChange} className="input-field" required placeholder=" " /><label htmlFor="name" className="input-label">Nama Status</label></div>
-                        <div className="input-group"><input type="color" id="color" name="color" value={form.color} onChange={handleFormChange} className="input-field !p-1 h-12" /><label htmlFor="color" className="input-label">Warna</label></div>
-                        <div className="input-group"><input type="number" min={0} max={100} id="defaultProgress" name="defaultProgress" value={form.defaultProgress ?? ''} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="defaultProgress" className="input-label">Default Progress (%)</label></div>
-                    </div>
-                    <div className="input-group"><textarea id="note" name="note" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="input-field" rows={2} placeholder=" " /><label htmlFor="note" className="input-label">Catatan/Deskripsi Status</label></div>
-                    <div>
-                        <h4 className="text-base font-semibold text-brand-text-light mb-2">Sub-Status</h4>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
-                            {form.subStatuses.map((sub, index) => (
-                                <div key={index} className="p-3 bg-brand-bg rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
-                                    <div className="input-group !mt-0"><input type="text" name="name" value={sub.name} onChange={e => handleSubStatusChange(index, e)} placeholder="Nama Sub-Status" className="input-field !p-2 !text-sm" /></div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="input-group flex-grow !mt-0"><input type="text" name="note" value={sub.note} onChange={e => handleSubStatusChange(index, e)} placeholder="Catatan" className="input-field !p-2 !text-sm" /></div>
-                                        <button type="button" onClick={() => removeSubStatus(index)} className="p-2 text-brand-danger hover:bg-brand-danger/10 rounded-full"><Trash2Icon className="w-4 h-4" /></button>
-                                    </div>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalMode === 'add' ? 'Tambah Status Baru' : `Edit Status: ${selectedStatus?.name}`} size="2xl">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <CollapsibleSection title="Identitas Status" defaultExpanded={true} variant="filled">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nama Status</label>
+                                    <input type="text" id="name" name="name" value={form.name} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-bold" required placeholder="Cth: Editing" />
                                 </div>
-                            ))}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Warna</label>
+                                    <input type="color" id="color" name="color" value={form.color} onChange={handleFormChange} className="w-full h-12 p-1 rounded-2xl border border-brand-border bg-white cursor-pointer" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Default Progres (%)</label>
+                                    <input type="number" min={0} max={100} id="defaultProgress" name="defaultProgress" value={form.defaultProgress ?? ''} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono" placeholder="0-100" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Catatan / Deskripsi</label>
+                                <textarea id="note" name="note" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all min-h-[80px] resize-none" placeholder="Deskripsi progres status ini..."></textarea>
+                            </div>
                         </div>
-                        <button type="button" onClick={addSubStatus} className="text-sm font-semibold text-brand-accent hover:underline mt-2">+ Tambah Sub-Status</button>
-                    </div>
-                    <div className="flex justify-end gap-3 pt-6 border-t border-brand-border">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="button-secondary">Batal</button>
-                        <button type="submit" className="button-primary">{modalMode === 'add' ? 'Simpan Status' : 'Update Status'}</button>
+                    </CollapsibleSection>
+
+                    <CollapsibleSection title="Hierarki Sub-Status" defaultExpanded={true} variant="filled">
+                        <div className="space-y-4">
+                            <p className="text-[10px] text-brand-text-secondary font-medium uppercase tracking-wider">Tambahkan langkah-langkah detail untuk status ini.</p>
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                {form.subStatuses.map((sub, index) => (
+                                    <div key={index} className="p-4 bg-white border border-brand-border rounded-2xl shadow-sm space-y-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">{index + 1}</div>
+                                            <input type="text" name="name" value={sub.name} onChange={e => handleSubStatusChange(index, e)} placeholder="Nama Sub-Status (Cth: Sortir Foto)" className="flex-grow px-3 py-2 rounded-xl border border-brand-border text-sm font-bold focus:ring-2 focus:ring-blue-500 transition-all" />
+                                            <button type="button" onClick={() => removeSubStatus(index)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all">
+                                                <Trash2Icon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="pl-11">
+                                            <input type="text" name="note" value={sub.note} onChange={e => handleSubStatusChange(index, e)} placeholder="Catatan tambahan (Cth: Max 2x revisi)" className="w-full px-3 py-2 rounded-xl border border-brand-border bg-brand-bg/30 text-xs focus:ring-2 focus:ring-blue-500 transition-all" />
+                                        </div>
+                                    </div>
+                                ))}
+                                {form.subStatuses.length === 0 && (
+                                    <div className="text-center py-6 border-2 border-dashed border-brand-border rounded-2xl">
+                                        <p className="text-xs text-brand-text-secondary font-medium">Belum ada sub-status.</p>
+                                    </div>
+                                )}
+                            </div>
+                            <button type="button" onClick={addSubStatus} className="w-full py-3 border-2 border-dashed border-brand-border rounded-2xl text-[10px] font-black uppercase tracking-widest text-brand-text-secondary hover:border-blue-500 hover:text-blue-600 transition-all">+ Tambah Sub-Status Baru</button>
+                        </div>
+                    </CollapsibleSection>
+
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-brand-border/10">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-brand-text-secondary hover:bg-brand-bg transition-all border border-brand-border/30">Batal</button>
+                        <button type="submit" className="px-12 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 transition-all active:scale-95">
+                            {modalMode === 'add' ? 'Simpan' : 'Update'}
+                        </button>
                     </div>
                 </form>
             </Modal>
+
         </div>
     );
 };

@@ -19,6 +19,7 @@ const Projects = lazy(() => import("@/pages/projects/ProjectsPage").then((m) => 
 const Freelancers = lazy(() => import("@/pages/team/TeamPage").then((m) => ({ default: m.Freelancers })));
 const Finance = lazy(() => import("@/pages/finance/FinancePage"));
 const Packages = lazy(() => import("@/features/packages/Packages"));
+const Contracts = lazy(() => import("@/pages/contracts/ContractsPage"));
 const Settings = lazy(() => import("@/pages/settings/SettingsPage"));
 const CalendarView = lazy(() => import("@/features/projects/components/CalendarView").then((m) => ({ default: m.CalendarView })));
 const ClientReports = lazy(() => import("@/features/clients/components/ClientKPI"));
@@ -63,7 +64,7 @@ export const AppRoutes: React.FC = () => {
         promoCodes, setPromoCodes, packages, setPackages,
         addOns, setAddOns, clientFeedback, setClientFeedback,
         notifications, appData, initialAction, setInitialAction,
-        users, setUsers
+        users, setUsers, contracts, setContracts
     } = useApp();
 
     const [route, setRoute] = useState(window.location.hash || "#/home");
@@ -111,6 +112,7 @@ export const AppRoutes: React.FC = () => {
             gallery: ViewType.GALLERY,
             "client-reports": ViewType.CLIENT_REPORTS,
             settings: ViewType.SETTINGS,
+            kontrak: ViewType.CONTRACTS,
         };
 
         if (routeToView[path]) {
@@ -232,6 +234,7 @@ export const AppRoutes: React.FC = () => {
                             cards={cards} 
                             setCards={setCards} 
                             totals={appData.totals} 
+                            onSignPaymentRecord={async () => {}}
                         />
                     </DataLoadingWrapper>
                 );
@@ -253,6 +256,23 @@ export const AppRoutes: React.FC = () => {
                 return <PromoCodes promoCodes={promoCodes} setPromoCodes={setPromoCodes} projects={projects} showNotification={showNotification} />;
             case ViewType.GALLERY:
                 return <GalleryUpload userProfile={profile} showNotification={showNotification} />;
+            case ViewType.CONTRACTS:
+                return (
+                    <DataLoadingWrapper loading={appData.loading.contracts} loaded={appData.loaded.contracts} loadingMessage="Memuat data kontrak..." onRetry={appData.loadContracts}>
+                        <Contracts 
+                            contracts={contracts} 
+                            setContracts={setContracts}
+                            clients={clients} 
+                            projects={projects} 
+                            profile={profile}
+                            showNotification={showNotification}
+                            initialAction={initialAction}
+                            setInitialAction={setInitialAction}
+                            packages={packages}
+                            onSignContract={() => {}}
+                        />
+                    </DataLoadingWrapper>
+                );
             default:
                 return <div />;
         }

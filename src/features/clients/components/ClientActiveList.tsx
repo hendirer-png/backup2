@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EyeIcon, PencilIcon, Trash2Icon, PlusIcon, ArrowUpIcon, ArrowDownIcon } from '@/constants';
 import { ClientStatus } from '@/types';
-import { ExtendedClient } from '@/features/clients/types/clients.types';
+import { ExtendedClient } from '@/features/clients/types';
 import { formatCurrency, getPaymentStatusClass } from '@/features/clients/utils/clients.utils';
 
 interface ClientActiveListProps {

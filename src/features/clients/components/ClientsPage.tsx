@@ -21,6 +21,8 @@ import ClientDetailModal from '@/features/clients/components/ClientDetailModal';
 import BillingChatModal from '@/features/clients/components/BillingChatModal';
 import { NewClientsChart } from '@/features/clients/components/NewClientsChart';
 import { ClientPortalQrModal, BookingFormShareModal } from '@/features/clients/components/ClientLinkModals';
+import { InvoicePreviewModal } from '@/features/clients/components/InvoicePreviewModal';
+import { ReceiptPreviewModal } from '@/features/clients/components/ReceiptPreviewModal';
 
 export interface ClientsFeatureProps {
     clients: Client[];
@@ -73,6 +75,8 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
         searchQuery, setSearchQuery,
         statusFilter, setStatusFilter,
         typeFilter, setTypeFilter,
+        startDate, setStartDate,
+        endDate, setEndDate,
         sortConfig, setSortConfig,
         filteredClientData,
         stats,
@@ -108,6 +112,21 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
         mostFrequentLocation: stats.mostFrequentLocation
     };
 
+    const [selectedInvoiceProject, setSelectedInvoiceProject] = React.useState<Project | null>(null);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = React.useState(false);
+    const [selectedReceiptTransaction, setSelectedReceiptTransaction] = React.useState<Transaction | null>(null);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = React.useState(false);
+
+    const handleViewInvoiceModal = (project: Project) => {
+        setSelectedInvoiceProject(project);
+        setIsInvoiceModalOpen(true);
+    };
+
+    const handleViewReceiptModal = (transaction: Transaction) => {
+        setSelectedReceiptTransaction(transaction);
+        setIsReceiptModalOpen(true);
+    };
+
     return (
         <div className="space-y-6 pb-20 sm:pb-8">
             <ClientHeader 
@@ -118,6 +137,13 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
 
             <ClientStatsCards stats={clientStats} />
 
+            <NewClientsChart clients={clients} />
+
+            <ClientUnpaidList 
+                clients={filteredClientData.filter(c => c.balanceDue > 0)}
+                onViewDetail={handleViewDetail}
+            />
+
             <ClientFilterBar 
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -127,13 +153,17 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
                 onStatusFilterChange={setStatusFilter}
                 typeFilter={typeFilter}
                 onTypeFilterChange={setTypeFilter}
+                startDate={startDate}
+                onStartDateChange={setStartDate}
+                endDate={endDate}
+                onEndDateChange={setEndDate}
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    {activeTab === 'all' && (
+            <div className="space-y-6">
+                {(activeTab === 'all' || activeTab === 'unpaid') && (
+                    <>
                         <ClientActiveList 
                             clients={filteredClientData}
                             onEditClient={(c: ExtendedClient) => handleOpenModal('edit', c, c.projects[0])}
@@ -141,26 +171,22 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
                             onDeleteClient={handleDeleteClient}
                             onAddProject={(c: ExtendedClient) => handleOpenModal('add', c)}
                         />
-                    )}
-                    {activeTab === 'inactive' && (
                         <ClientInactiveList 
                             clients={filteredClientData}
                             onEditClient={(c: ExtendedClient) => handleOpenModal('edit', c, c.projects[0])}
                             onViewDetail={handleViewDetail}
                             onDeleteClient={handleDeleteClient}
                         />
-                    )}
-                    {activeTab === 'unpaid' && (
-                        <ClientUnpaidList 
-                            clients={filteredClientData}
-                            onViewDetail={handleViewDetail}
-                        />
-                    )}
-                </div>
-
-                <div className="space-y-6">
-                    <NewClientsChart clients={clients} />
-                </div>
+                    </>
+                )}
+                {activeTab === 'inactive' && (
+                    <ClientInactiveList 
+                        clients={filteredClientData}
+                        onEditClient={(c: ExtendedClient) => handleOpenModal('edit', c, c.projects[0])}
+                        onViewDetail={handleViewDetail}
+                        onDeleteClient={handleDeleteClient}
+                    />
+                )}
             </div>
 
             <ClientForm 
@@ -189,8 +215,8 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
                     cards={cards}
                     onEditClient={(c: Client) => handleOpenModal('edit', c, projects.find(p => p.clientId === c.id))}
                     onDeleteClient={handleDeleteClient}
-                    onViewReceipt={(t) => window.open(`${window.location.origin}/#/portal/receipt/${t.id}`, '_blank')}
-                    onViewInvoice={(p) => window.open(`${window.location.origin}/#/portal/invoice/${p.id}`, '_blank')}
+                    onViewReceipt={handleViewReceiptModal}
+                    onViewInvoice={handleViewInvoiceModal}
                     handleNavigation={handleNavigation}
                     onRecordPayment={onRecordPayment}
                     onSharePortal={handleSharePortal}
@@ -226,6 +252,40 @@ export const ClientsPage: React.FC<ClientsFeatureProps> = (props) => {
                 onCopyLink={handleCopyBookingLink}
                 onDownloadQr={handleDownloadQr}
             />
+
+            {selectedInvoiceProject && (
+                <InvoicePreviewModal 
+                    isOpen={isInvoiceModalOpen}
+                    onClose={() => setIsInvoiceModalOpen(false)}
+                    project={selectedInvoiceProject}
+                    profile={userProfile}
+                    packages={packages}
+                    client={clients.find(c => c.id === selectedInvoiceProject.clientId)}
+                    onSign={(sig) => onSignInvoice(selectedInvoiceProject.id, sig)}
+                    onEdit={() => {
+                        const client = clients.find(c => c.id === selectedInvoiceProject.clientId);
+                        if (client) handleOpenModal('edit', client, selectedInvoiceProject);
+                    }}
+                />
+            )}
+
+            {selectedReceiptTransaction && (
+                <ReceiptPreviewModal 
+                    isOpen={isReceiptModalOpen}
+                    onClose={() => setIsReceiptModalOpen(false)}
+                    transaction={selectedReceiptTransaction}
+                    project={projects.find(p => p.id === selectedReceiptTransaction.projectId)}
+                    client={selectedClientForDetail}
+                    profile={userProfile}
+                    onSign={(sig) => onSignTransaction(selectedReceiptTransaction.id, sig)}
+                    onEdit={() => {
+                        const project = projects.find(p => p.id === selectedReceiptTransaction.projectId);
+                        if (selectedClientForDetail && project) {
+                            handleOpenModal('edit', selectedClientForDetail, project);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };

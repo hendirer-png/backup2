@@ -11,6 +11,7 @@ interface AppDataState {
   transactions: Transaction[];
   leads: Lead[];
   clientFeedback: ClientFeedback[];
+  contracts: any[];
   users: any[];
   totals: {
     projects: number;
@@ -32,6 +33,7 @@ interface AppDataState {
     transactions: boolean;
     leads: boolean;
     clientFeedback: boolean;
+    contracts: boolean;
     users: boolean;
     totals: boolean;
   };
@@ -42,6 +44,7 @@ interface AppDataState {
     transactions: boolean;
     leads: boolean;
     clientFeedback: boolean;
+    contracts: boolean;
     users: boolean;
     totals: boolean;
   };
@@ -59,6 +62,7 @@ export function useAppData() {
     transactions: [],
     leads: [],
     clientFeedback: [],
+    contracts: [],
     users: [],
     totals: {
       projects: 0,
@@ -80,6 +84,7 @@ export function useAppData() {
       transactions: false,
       leads: false,
       clientFeedback: false,
+      contracts: false,
       users: false,
       totals: false,
     },
@@ -90,6 +95,7 @@ export function useAppData() {
       transactions: false,
       leads: false,
       clientFeedback: false,
+      contracts: false,
       users: false,
       totals: false,
     }
@@ -281,6 +287,37 @@ export function useAppData() {
     }
   }, []);
   
+  // Load contracts lazily
+  const loadContracts = useCallback(async () => {
+    if (loadingRef.current.contracts || loadedRef.current.contracts) return;
+
+    loadingRef.current.contracts = true;
+    setState(prev => ({
+      ...prev,
+      loading: { ...prev.loading, contracts: true }
+    }));
+
+    try {
+      const { listContracts } = await import('@/services/contracts');
+      const contracts = await listContracts();
+
+      loadedRef.current.contracts = true;
+      setState(prev => ({
+        ...prev,
+        contracts,
+        loading: { ...prev.loading, contracts: false },
+        loaded: { ...prev.loaded, contracts: true }
+      }));
+    } catch (error) {
+      console.warn('[Supabase] Failed to fetch contracts:', error);
+      loadingRef.current.contracts = false;
+      setState(prev => ({
+        ...prev,
+        loading: { ...prev.loading, contracts: false }
+      }));
+    }
+  }, []);
+
   // Load users lazily
   const loadUsers = useCallback(async () => {
     if (loadingRef.current.users || loadedRef.current.users) return;
@@ -387,6 +424,7 @@ export function useAppData() {
     loadTransactions,
     loadLeads,
     loadClientFeedback,
+    loadContracts,
     loadUsers,
     loadTotals
   };

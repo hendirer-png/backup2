@@ -4,6 +4,8 @@ import { CategoryManager } from '@/features/settings/components/CategoryManager'
 import { ProjectStatusManager } from '@/features/settings/components/ProjectStatusManager';
 import { ChecklistTemplateSettings } from '@/features/settings/components/ChecklistTemplateSettings';
 import { DEFAULT_STATUS_CONFIG } from '@/features/settings/utils/settings.utils';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
+import { PackageIcon, CalendarIcon, ListIcon, CheckSquareIcon } from '@/constants';
 
 interface ProjectSettingsTabProps {
     profile: Profile;
@@ -35,42 +37,71 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({
     };
 
     return (
-        <div className="space-y-12 max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6">
+        <div className="space-y-6 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CollapsibleSection 
+                    title="Tipe Project / Layanan" 
+                    defaultExpanded={true} 
+                    variant="filled"
+                    icon={<PackageIcon className="w-4 h-4" />}
+                >
                     <CategoryManager
-                        title="Tipe Project / Layanan" placeholder="Tambah Tipe (e.g. Wedding Photography)" categories={profile.projectTypes || []}
-                        inputValue={projectTypeInput} onInputChange={setProjectTypeInput}
+                        title="Daftar Tipe Project" 
+                        placeholder="Tambah Tipe (e.g. Wedding Photography)" 
+                        categories={profile.projectTypes || []}
+                        inputValue={projectTypeInput} 
+                        onInputChange={setProjectTypeInput}
                         onAddOrUpdate={() => handleUpdate('projectTypes', projectTypeInput, setProjectTypeInput, profile.projectTypes || [], editingProjectType, setEditingProjectType)}
                         onEdit={(cat) => { setEditingProjectType(cat); setProjectTypeInput(cat); }}
                         onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('projectTypes', (profile.projectTypes || []).filter(c => c !== cat))}
-                        editingValue={editingProjectType} onCancelEdit={() => { setEditingProjectType(null); setProjectTypeInput(''); }}
+                        editingValue={editingProjectType} 
+                        onCancelEdit={() => { setEditingProjectType(null); setProjectTypeInput(''); }}
                     />
-                </div>
-                <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6">
+                </CollapsibleSection>
+
+                <CollapsibleSection 
+                    title="Jenis Acara Pernikahan" 
+                    defaultExpanded={true} 
+                    variant="filled"
+                    icon={<CalendarIcon className="w-4 h-4" />}
+                >
                     <CategoryManager
-                        title="Jenis Acara Pernikahan" placeholder="Tambah Jenis (e.g. Akad Nikah)" categories={profile.eventTypes || []}
-                        inputValue={eventTypeInput} onInputChange={setEventTypeInput}
+                        title="Daftar Jenis Acara" 
+                        placeholder="Tambah Jenis (e.g. Akad Nikah)" 
+                        categories={profile.eventTypes || []}
+                        inputValue={eventTypeInput} 
+                        onInputChange={setEventTypeInput}
                         onAddOrUpdate={() => handleUpdate('eventTypes', eventTypeInput, setEventTypeInput, profile.eventTypes || [], editingEventType, setEditingEventType)}
                         onEdit={(cat) => { setEditingEventType(cat); setEventTypeInput(cat); }}
                         onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('eventTypes', (profile.eventTypes || []).filter(c => c !== cat))}
-                        editingValue={editingEventType} onCancelEdit={() => { setEditingEventType(null); setEventTypeInput(''); }}
+                        editingValue={editingEventType} 
+                        onCancelEdit={() => { setEditingEventType(null); setEventTypeInput(''); }}
                     />
-                </div>
+                </CollapsibleSection>
             </div>
 
-            <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6 md:p-8">
+            <CollapsibleSection 
+                title="Manajemen Status Project" 
+                defaultExpanded={true} 
+                variant="filled"
+                icon={<ListIcon className="w-4 h-4" />}
+            >
                 <ProjectStatusManager
                     config={profile.projectStatusConfig || []}
                     onConfigChange={(newConfig) => setProfile(p => ({ ...p, projectStatusConfig: newConfig }))}
                     projects={projects} profile={profile}
                     onAddDefaultStatuses={() => confirm('Gunakan status default?') && handleCategoryUpdate('projectStatusConfig', DEFAULT_STATUS_CONFIG as any)}
                 />
-            </div>
+            </CollapsibleSection>
 
-            <div className="bg-brand-bg/40 border border-brand-border rounded-3xl p-6 md:p-8">
+            <CollapsibleSection 
+                title="Template Checklist Pelanggan" 
+                defaultExpanded={true} 
+                variant="filled"
+                icon={<CheckSquareIcon className="w-4 h-4" />}
+            >
                 <ChecklistTemplateSettings profile={profile} setProfile={setProfile} showNotification={showNotification} />
-            </div>
+            </CollapsibleSection>
         </div>
     );
 };

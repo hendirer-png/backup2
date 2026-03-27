@@ -68,14 +68,15 @@ const AddOnSection: React.FC<AddOnSectionProps> = ({
                 <form onSubmit={onSubmit} className="p-4 md:p-5 border-t border-brand-border/50 bg-brand-surface/40 rounded-b-3xl space-y-4">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-brand-text-secondary/70 mb-2">{editMode ? 'Edit Add-On' : 'Tambah Add-On Baru'}</h4>
                     <div className="input-group">
-                        <input type="text" id="addOnName" name="name" value={formData.name} onChange={onInputChange} className="input-field bg-white/80" placeholder=" " required />
                         <label htmlFor="addOnName" className="input-label">Nama Add-On</label>
+                        <input type="text" id="addOnName" name="name" value={formData.name} onChange={onInputChange} className="input-field bg-white/80" placeholder=" " required />
                     </div>
                     <div className="input-group">
-                        <RupiahInput id="addOnPrice" value={formData.price.toString()} onChange={onPriceChange} className="input-field bg-white/80" placeholder=" " required />
                         <label htmlFor="addOnPrice" className="input-label">Harga (IDR)</label>
+                        <RupiahInput id="addOnPrice" value={formData.price.toString()} onChange={onPriceChange} className="input-field bg-white/80" placeholder=" " required />
                     </div>
                     <div className="input-group">
+                        <label htmlFor="addOnRegion" className="input-label">Wilayah (opsional)</label>
                         <input
                             type="text"
                             id="addOnRegion"
@@ -86,7 +87,6 @@ const AddOnSection: React.FC<AddOnSectionProps> = ({
                             className="input-field bg-white/80"
                             placeholder=" "
                         />
-                        <label htmlFor="addOnRegion" className="input-label">Wilayah (opsional)</label>
                         <datalist id="region-suggestions-addon">
                             {unionRegions.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                         </datalist>

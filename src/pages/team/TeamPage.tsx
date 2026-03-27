@@ -14,6 +14,7 @@ import { createTransaction as createTransactionApi, updateCardBalance as updateC
 import { createTeamPaymentRecord } from '@/services/teamPaymentRecords';
 import { updatePocket as updatePocketRow } from '@/services/pockets';
 import FreelancerProjects from '@/features/team/components/FreelancerProjects';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
 
 
 const formatCurrency = (amount: number) => {
@@ -1436,90 +1437,89 @@ export const Freelancers: React.FC<FreelancersProps> = ({
                 </div>
             </Modal>
 
-            <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={formMode === 'add' ? 'Tambah Tim / Vendor' : 'Edit Tim / Vendor'}>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
-                        <h4 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
-                            <UsersIcon className="w-4 h-4" />
-                            Informasi Tim / Vendor
-                        </h4>
-                        <p className="text-xs text-brand-text-secondary">
-                            Tambahkan data lengkap Tim / Vendor yang akan bekerja sama dengan Anda. Data ini akan digunakan untuk manajemen Acara Pernikahan dan pembayaran.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h5 className="text-sm font-semibold text-brand-text-light mb-3">Data Pribadi</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="input-group">
-                                <input type="text" id="name" name="name" value={formData.name} onChange={handleFormChange} className="input-field" placeholder=" " required />
-                                <label htmlFor="name" className="input-label">Nama Pengantin</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Nama Pengantin Tim / Vendor</p>
+            <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={formMode === 'add' ? 'Tambah Tim / Vendor Baru' : `Edit Data: ${selectedMember?.name}`} size="2xl">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <CollapsibleSection title="Informasi Utama" defaultExpanded={true} variant="filled">
+                        <div className="space-y-4">
+                            <div className="bg-blue-600/5 border border-blue-600/10 rounded-2xl p-5 mb-4">
+                                <h4 className="text-sm font-bold text-blue-600 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                                    <UsersIcon className="w-4 h-4" />
+                                    Informasi Tim / Vendor
+                                </h4>
+                                <p className="text-xs text-brand-text-secondary leading-relaxed font-medium">
+                                    Tambahkan data lengkap Tim / Vendor yang akan bekerja sama dengan Anda untuk manajemen proyek dan pembayaran.
+                                </p>
                             </div>
-                            <div className="input-group">
-                                <input type="text" id="role" name="role" value={formData.role} onChange={handleFormChange} className="input-field" placeholder=" " required />
-                                <label htmlFor="role" className="input-label">Role/Posisi</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Contoh: Make-Up Artist, Dekorator, Musisi</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nama Lengkap</label>
+                                    <input type="text" id="name" name="name" value={formData.name} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white placeholder:text-brand-text-secondary/30 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold" placeholder="Nama Lengkap" required />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Peran / Jabatan</label>
+                                    <input type="text" id="role" name="role" value={formData.role} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white placeholder:text-brand-text-secondary/30 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold" placeholder="Cth: Fotografer" required />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Email</label>
+                                    <input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white placeholder:text-brand-text-secondary/30 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="email@contoh.com" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nomor Telepon / WhatsApp</label>
+                                    <input type="tel" id="p_phone" name="phone" value={formData.phone} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white placeholder:text-brand-text-secondary/30 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono" placeholder="08xxxxxxxx" />
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </CollapsibleSection>
 
-                    <div>
-                        <h5 className="text-sm font-semibold text-brand-text-light mb-3">Kontak</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="input-group">
-                                <input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " required />
-                                <label htmlFor="email" className="input-label">Email</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Email untuk komunikasi dan akses portal</p>
+                    <CollapsibleSection title="Detail Administratif" defaultExpanded={true} variant="filled">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Fee Standar (IDR)</label>
+                                    <RupiahInput
+                                        id="standardFee"
+                                        name="standardFee"
+                                        value={String(formData.standardFee ?? '')}
+                                        onChange={(raw) => setFormData(prev => ({ ...prev, standardFee: Number(raw) }))}
+                                        className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white font-black text-blue-600 text-right text-lg"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nomor Rekening / E-Wallet</label>
+                                    <input type="text" id="noRek" name="noRek" value={formData.noRek} onChange={handleFormChange} className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white placeholder:text-brand-text-secondary/30 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-semibold" placeholder="Cth: BCA 1234567890" />
+                                </div>
                             </div>
-                            <div className="input-group">
-                                <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required />
-                                <label htmlFor="phone" className="input-label">Nomor Telepon</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Nomor WhatsApp/telepon aktif</p>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Kategori</label>
+                                <select
+                                    id="category"
+                                    name="category"
+                                    value={formData.category} // @ts-ignore
+                                    onChange={handleFormChange}
+                                    className="w-full px-4 py-3 rounded-2xl border border-brand-border bg-white font-semibold text-brand-text-primary focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                >
+                                    <option value="Tim">Tim Internal</option>
+                                    <option value="Vendor">Vendor Eksternal</option>
+                                </select>
+                                <p className="text-[10px] text-brand-text-secondary mt-1 italic font-medium">Pilih "Tim" untuk tim internal Anda, atau "Vendor" untuk pihak ketiga.</p>
                             </div>
                         </div>
-                    </div>
+                    </CollapsibleSection>
 
-                    <div>
-                        <h5 className="text-sm font-semibold text-brand-text-light mb-3">Informasi Pembayaran</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="input-group">
-                                <RupiahInput id="standardFee" value={formData.standardFee.toString()} onChange={(raw: string) => setFormData(prev => ({ ...prev, standardFee: Number(raw) }))} className="input-field" placeholder=" " required />
-                                <label htmlFor="standardFee" className="input-label">Fee Standar (IDR)</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Fee default per Acara Pernikahan dalam Rupiah</p>
-                            </div>
-                            <div className="input-group">
-                                <input type="text" id="noRek" name="noRek" value={formData.noRek} onChange={handleFormChange} className="input-field" placeholder=" " />
-                                <label htmlFor="noRek" className="input-label">Nomor Rekening</label>
-                                <p className="text-xs text-brand-text-secondary mt-1">Untuk transfer pembayaran (opsional)</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h5 className="text-sm font-semibold text-brand-text-light mb-3">Kategori</h5>
-                        <div className="input-group">
-                            <select
-                                id="category"
-                                name="category"
-                                value={formData.category} // @ts-ignore
-                                onChange={handleFormChange}
-                                className="input-field"
-                            >
-                                <option value="Tim">Tim Internal</option>
-                                <option value="Vendor">Vendor Eksternal</option>
-                            </select>
-                            <label htmlFor="category" className="input-label">Pilih Kategori</label>
-                            <p className="text-xs text-brand-text-secondary mt-1">Pilih "Tim" untuk tim internal Anda, atau "Vendor" untuk pihak ketiga.</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-brand-border">
-                        <button type="button" onClick={() => setIsFormOpen(false)} className="button-secondary w-full sm:w-auto">Batal</button>
-                        <button type="submit" className="button-primary w-full sm:w-auto">{formMode === 'add' ? 'Simpan' : 'Update'}</button>
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-brand-border/10">
+                        <button type="button" onClick={() => setIsFormOpen(false)} className="px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-brand-text-secondary hover:bg-brand-bg transition-all active:scale-95 border border-brand-border/30">Batal</button>
+                        <button type="submit" className="px-12 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/30 transition-all active:scale-95">
+                            {formMode === 'add' ? 'Simpan' : 'Update'}
+                        </button>
                     </div>
                 </form>
             </Modal>
+
 
             {selectedMember && <Modal isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)} title={`Detail Tim / Vendor: ${selectedMember.name}`} size="4xl">
                 <div className="flex flex-col h-full">

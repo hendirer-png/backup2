@@ -785,12 +785,12 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
                                 <div className="space-y-4">
                                     <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2">Informasi Anda & Acara Pernikahan</h4>
-                                    <div className="input-group"><input type="text" id="clientName" name="clientName" value={formData.clientName} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="clientName" className="input-label">Nama Pengantin</label></div>
-                                    <div className="input-group"><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="email" className="input-label">Email</label></div>
-                                    <div className="input-group"><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /><label htmlFor="phone" className="input-label">Nomor WhatsApp</label></div>
-                                    <div className="input-group"><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="instagram" className="input-label">Instagram</label></div>
-                                    <div className="input-group"><input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="date" className="input-label">Tanggal Acara Pernikahan</label></div>
-                                    <div className="input-group"><input type="text" id="location" name="location" value={formData.location} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="location" className="input-label">Alamat Acara Pernikahan</label></div>
+                                    <div className="input-group"><label htmlFor="clientName" className="input-label">Nama Pengantin</label><input type="text" id="clientName" name="clientName" value={formData.clientName} onChange={handleFormChange} className="input-field" placeholder=" " required /></div>
+                                    <div className="input-group"><label htmlFor="email" className="input-label">Email</label><input type="email" id="email" name="email" value={formData.email} onChange={handleFormChange} className="input-field" placeholder=" " required /></div>
+                                    <div className="input-group"><label htmlFor="phone" className="input-label">Nomor WhatsApp</label><input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleFormChange} className="input-field" placeholder=" " required /></div>
+                                    <div className="input-group"><label htmlFor="instagram" className="input-label">Instagram</label><input type="text" id="instagram" name="instagram" value={formData.instagram} onChange={handleFormChange} className="input-field" placeholder=" " /></div>
+                                    <div className="input-group"><label htmlFor="date" className="input-label">Tanggal Acara Pernikahan</label><input type="date" id="date" name="date" value={formData.date} onChange={handleFormChange} className="input-field" placeholder=" " /></div>
+                                    <div className="input-group"><label htmlFor="location" className="input-label">Alamat Acara Pernikahan</label><input type="text" id="location" name="location" value={formData.location} onChange={handleFormChange} className="input-field" placeholder=" " /></div>
                                     <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2 pt-4">Package & Pembayaran</h4>
                                     <div className="p-4 bg-public-bg rounded-lg space-y-3">
                                         {bookingModal.pkg && (() => {
@@ -866,11 +866,12 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                     <h4 className="text-base font-semibold text-gradient border-b border-public-border pb-2">Tambahan</h4>
                                     <div className="input-group"><label className="input-label !static !-top-4 text-public-accent">Add-On Lainnya (Opsional)</label><div className="p-3 border border-public-border bg-public-bg rounded-lg space-y-2 mt-2">{addOns.map(addon => (<label key={addon.id} className="flex items-center justify-between p-1.5 rounded-md hover:bg-public-surface cursor-pointer"><span className="text-sm text-public-text-primary">{addon.name}</span><div className="flex items-center gap-2"><span className="text-sm text-public-text-secondary">{formatCurrency(addon.price)}</span><input type="checkbox" id={addon.id} name="addOns" checked={formData.selectedAddOnIds.includes(addon.id)} onChange={handleFormChange} className="h-4 w-4 rounded flex-shrink-0 text-brand-accent focus:ring-brand-accent transition" /></div></label>))}</div></div>
                                     <div className="input-group">
-                                        <input type="text" id="promoCode" name="promoCode" value={formData.promoCode} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         <label htmlFor="promoCode" className="input-label">Kode Promo (Opsional)</label>
+                                        <input type="text" id="promoCode" name="promoCode" value={formData.promoCode} onChange={handleFormChange} className="input-field" placeholder=" " />
                                         {promoFeedback.message && <p className={`text-xs mt-1 ${promoFeedback.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>{promoFeedback.message}</p>}
                                     </div>
                                     <div className="input-group">
+                                        <label htmlFor="transportCost" className="input-label">Fee Transport (Opsional)</label>
                                         <RupiahInput
                                             id="transportCost"
                                             name="transportCost"
@@ -879,13 +880,13 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                             className="input-field"
                                             placeholder=" "
                                         />
-                                        <label htmlFor="transportCost" className="input-label">Fee Transport (Opsional)</label>
                                     </div>
                                     <div className="p-4 bg-public-bg rounded-lg">
                                         <p className="text-sm text-public-text-secondary">Silakan transfer Uang Muka (DP) ke rekening:</p>
                                         <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border mt-2">{userProfile.bankAccount}</p>
                                         <div className="grid grid-cols-2 gap-4 mt-3">
                                             <div className="input-group !mt-0">
+                                                <label htmlFor="dp" className="input-label">Jumlah DP</label>
                                                 <RupiahInput
                                                     id="dp"
                                                     name="dp"
@@ -894,10 +895,9 @@ const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUse
                                                     className="input-field text-right"
                                                     placeholder=" "
                                                 />
-                                                <label htmlFor="dp" className="input-label">Jumlah DP</label>
                                                 <p className="text-xs text-public-text-secondary mt-1 text-right">Saran DP (30%): {formatCurrency(suggestedDp)}</p>
                                             </div>
-                                            <div className="input-group !mt-0"><input type="text" name="dpPaymentRef" id="dpPaymentRef" value={formData.dpPaymentRef} onChange={handleFormChange} className="input-field" placeholder=" " /><label htmlFor="dpPaymentRef" className="input-label">No. Ref / 4 Digit Rek</label></div>
+                                            <div className="input-group !mt-0"><label htmlFor="dpPaymentRef" className="input-label">No. Ref / 4 Digit Rek</label><input type="text" name="dpPaymentRef" id="dpPaymentRef" value={formData.dpPaymentRef} onChange={handleFormChange} className="input-field" placeholder=" " /></div>
                                         </div>
                                     </div>
                                     <div className="input-group">

@@ -32,6 +32,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             <h3 className="text-sm md:text-lg font-semibold text-brand-text-light border-b border-gray-700/50 pb-2 md:pb-3 mb-3 md:mb-4">{title}</h3>
             <div className="flex flex-col sm:flex-row gap-2 mb-3 md:mb-4">
                 <div className="input-group flex-grow !mt-0">
+                    <label htmlFor={`input-${title.replace(/\s/g, '')}`} className="input-label">{placeholder}</label>
                     <input
                         type="text"
                         id={`input-${title.replace(/\s/g, '')}`}
@@ -41,7 +42,6 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                         placeholder=" "
                         className="input-field"
                     />
-                    <label htmlFor={`input-${title.replace(/\s/g, '')}`} className="input-label">{placeholder}</label>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={onAddOrUpdate} className="button-primary h-fit mt-2 flex-1 sm:flex-none">{editingValue ? 'Update' : 'Tambah'}</button>
