@@ -1,15 +1,9 @@
 import { Profile, Transaction, Project, User, ViewType, Package, ChatTemplate, ChecklistTemplate, ProjectStatusConfig, SubStatusConfig } from '@/types';
 
 export interface SettingsPageProps {
-    profile: Profile;
-    setProfile: React.Dispatch<React.SetStateAction<Profile>>;
-    transactions: Transaction[];
-    projects: Project[];
-    packages: Package[];
-    users: User[];
-    setUsers: React.Dispatch<React.SetStateAction<User[]>>;
     currentUser: User | null;
 }
+
 
 export interface UserFormData {
     fullName: string;

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Client, Project, Transaction, Package, Card, PromoCode, PaymentStatus, TransactionType, ClientStatus, Profile } from '@/types';
 import { createClient as createClientRow, updateClient as updateClientRow, deleteClient as deleteClientRow } from '@/services/clients';
 import { createProject as createProjectRow, updateProject as updateProjectRow, deleteProject as deleteProjectRow } from '@/services/projects';
@@ -7,6 +8,13 @@ import { findCardIdByMeta } from '@/services/cards';
 import { ensureOnlineOrNotify } from '@/utils/network';
 import { downloadCSV } from '@/features/clients/utils/clients.utils';
 import { ExtendedClient } from '@/features/clients/types';
+import { useClients } from '@/features/clients/api/useClients';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useTransactions, useCards, usePockets } from '@/features/finance/api/useFinanceQueries';
+import { usePackages, useAddOns } from '@/features/packages/api/usePackagesQueries';
+import { usePromoCodes } from '@/features/promo/api/usePromoQueries';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+
 
 export const initialFormState = {
     clientId: '',
@@ -35,38 +43,40 @@ export const initialFormState = {
 };
 
 export interface UseClientsPageProps {
-    clients: Client[];
-    setClients: React.Dispatch<React.SetStateAction<Client[]>>;
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    promoCodes: PromoCode[];
-    setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>>;
-    packages: Package[];
-    addOns: any[];
-    userProfile: Profile;
     showNotification: (msg: string) => void;
-    addNotification: (notif: any) => void;
-    initialAction: any;
-    setInitialAction: (val: any) => void;
 }
 
+
+
 export const useClientsPage = ({
-    clients, setClients,
-    projects, setProjects,
-    transactions, setTransactions,
-    cards, setCards,
-    promoCodes, setPromoCodes,
-    packages, addOns,
-    userProfile,
     showNotification,
-    addNotification,
-    initialAction,
-    setInitialAction
 }: UseClientsPageProps) => {
+
+    const queryClient = useQueryClient();
+
+    // --- Data Fetching ---
+    const { data: clients = [] } = useClients();
+    const { data: projects = [] } = useProjects();
+    const { data: transactions = [] } = useTransactions({});
+    const { data: cards = [] } = useCards();
+    const { data: pockets = [] } = usePockets();
+    const { data: packages = [] } = usePackages();
+    const { data: addOns = [] } = useAddOns();
+    const { data: promoCodes = [] } = usePromoCodes();
+    const { data: userProfileData } = useProfile();
+
+    const userProfile = userProfileData || ({
+        projectTypes: [],
+        projectStatusConfig: [],
+        eventTypes: [],
+    } as any);
+
+    // Mock setter for compatibility (zero-rewrite pattern)
+    const setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>> = (u) => {
+        queryClient.invalidateQueries({ queryKey: ['promoCodes'] });
+    };
+
+
     // --- UI & Modal States ---
     const [activeTab, setActiveTab] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,29 +99,7 @@ export const useClientsPage = ({
     const [endDate, setEndDate] = useState<string>('');
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
-    // --- Effects ---
-    useEffect(() => {
-        if (initialAction && initialAction.type === 'VIEW_CLIENT_DETAILS' && initialAction.id) {
-            const client = clients.find(c => c.id === initialAction.id);
-            if (client) {
-                const clientProjects = projects.filter(p => p.clientId === client.id);
-                const totalValue = clientProjects.reduce((sum: number, p: Project) => sum + p.totalCost, 0);
-                const totalPaid = clientProjects.reduce((sum: number, p: Project) => sum + p.amountPaid, 0);
-                const extended: ExtendedClient = {
-                    ...client,
-                    projects: clientProjects,
-                    totalProjectValue: totalValue,
-                    balanceDue: totalValue - totalPaid,
-                    PackageTerbaru: clientProjects.length > 0 ? clientProjects[0].packageName : '',
-                    overallPaymentStatus: clientProjects.length > 0 ? clientProjects[0].paymentStatus : null,
-                    mostRecentProject: clientProjects[0] || null
-                };
-                setSelectedClientForDetail(extended);
-                setIsDetailModalOpen(true);
-            }
-            setInitialAction(null);
-        }
-    }, [initialAction, clients, projects, setInitialAction]);
+
 
     // --- Computed Data ---
     const allClientData = useMemo(() => {
@@ -227,7 +215,7 @@ export const useClientsPage = ({
                         address: formData.address || undefined,
                     } as Omit<Client, 'id'>);
                     clientId = created.id;
-                    setClients(prev => [created, ...prev]);
+                    queryClient.invalidateQueries();
                 } catch (err) {
                     showNotification('Gagal menyimpan pengantin ke database.');
                     return;
@@ -260,7 +248,7 @@ export const useClientsPage = ({
                     address: formData.address || undefined,
                     addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
                 } as any);
-                setProjects(prev => [{ ...createdProject, addOns: selectedAddOns } as Project, ...prev]);
+                queryClient.invalidateQueries();
 
                 if (dpAmount > 0 && formData.dpDestinationCardId) {
                     const selectedCard = cards.find(c => c.id === formData.dpDestinationCardId);
@@ -276,10 +264,7 @@ export const useClientsPage = ({
                             method: 'Transfer Bank',
                             cardId: supaCardId || undefined,
                         } as any);
-                        setTransactions(prev => [createdTx, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-                        if (formData.dpDestinationCardId) {
-                            setCards(prev => prev.map(c => c.id === formData.dpDestinationCardId ? { ...c, balance: c.balance + dpAmount } : c));
-                        }
+                        queryClient.invalidateQueries();
                     } catch (err) {
                         console.warn('DP Tx sync failed');
                     }
@@ -302,7 +287,7 @@ export const useClientsPage = ({
                     whatsapp: formData.whatsapp || undefined, instagram: formData.instagram || undefined,
                     clientType: formData.clientType, address: formData.address || undefined,
                 });
-                setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+                queryClient.invalidateQueries();
 
                 const updatedProject = await updateProjectRow(selectedProject.id, {
                     projectName: formData.projectName,
@@ -324,13 +309,7 @@ export const useClientsPage = ({
                     address: formData.address || undefined,
                     addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
                 } as any);
-                setProjects(prev => prev.map(p => p.id === updatedProject.id ? { 
-                    ...updatedProject, 
-                    addOns: selectedAddOns,
-                    // Preserve relations not returned by standard updateProjectRow
-                    team: p.team || [],
-                    weddingDayChecklist: p.weddingDayChecklist || [],
-                } as Project : p));
+                queryClient.invalidateQueries();
                 
                 showNotification(`Data berhasil diperbarui.`);
                 handleCloseModal();
@@ -437,7 +416,7 @@ export const useClientsPage = ({
         if (!window.confirm('Hapus pengantin?')) return;
         try {
             await deleteClientRow(clientId);
-            setClients((prev: Client[]) => prev.filter((c: Client) => c.id !== clientId));
+            queryClient.invalidateQueries();
             showNotification('Pengantin berhasil dihapus.');
         } catch (err) {
             showNotification('Gagal menghapus pengantin.');
@@ -455,7 +434,7 @@ export const useClientsPage = ({
         try {
             const success = await deleteProjectRow(projectId);
             if (success) {
-                setProjects((prev: Project[]) => prev.filter(p => p.id !== projectId));
+                queryClient.invalidateQueries();
                 showNotification('Proyek berhasil dihapus.');
             } else {
                 showNotification('Gagal menghapus proyek.');

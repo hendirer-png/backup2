@@ -25,8 +25,8 @@ export const useFinanceAnalytics = ({
 }: UseFinanceAnalyticsProps) => {
     
     const cardStats = useMemo(() => {
-        const creditDebt = cards.filter(c => c.cardType === CardType.CREDIT).reduce((sum, c) => sum + (c.balance < 0 ? c.balance : 0), 0);
-        const debitAndCashAssets = cards.filter(c => c.cardType !== CardType.CREDIT).reduce((sum, c) => sum + c.balance, 0);
+        const creditDebt = cards.filter(c => c.cardType === CardType.KREDIT).reduce((sum, c) => sum + (c.balance < 0 ? c.balance : 0), 0);
+        const debitAndCashAssets = cards.filter(c => c.cardType !== CardType.KREDIT).reduce((sum, c) => sum + c.balance, 0);
         const cashBalance = cards.filter(c => c.cardType === CardType.TUNAI).reduce((sum, c) => sum + c.balance, 0);
 
         const cardUsage: Record<string, number> = {};

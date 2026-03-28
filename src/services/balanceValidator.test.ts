@@ -45,15 +45,15 @@ describe('balanceValidator', () => {
 
   describe('hasCardBalance', () => {
     it('returns true for INCOME', () => {
-      expect(hasCardBalance({ balance: 0 }, 100, TransactionType.INCOME)).toBe(true);
+      expect(hasCardBalance({ balance: 0 } as any, 100, TransactionType.INCOME)).toBe(true);
     });
-
+ 
     it('returns true when balance >= amount', () => {
-      expect(hasCardBalance({ balance: 100 }, 50, TransactionType.EXPENSE)).toBe(true);
+      expect(hasCardBalance({ balance: 100 } as any, 50, TransactionType.EXPENSE)).toBe(true);
     });
-
+ 
     it('returns false when balance < amount for EXPENSE', () => {
-      expect(hasCardBalance({ balance: 10 }, 50, TransactionType.EXPENSE)).toBe(false);
+      expect(hasCardBalance({ balance: 10 } as any, 50, TransactionType.EXPENSE)).toBe(false);
     });
   });
 

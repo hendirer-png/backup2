@@ -1,8 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Package, AddOn, Project, PhysicalItem, Profile, Region, REGIONS, DurationOption } from '@/types';
+import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Package, AddOn, PhysicalItem, Region, REGIONS, DurationOption } from '@/types';
 import { createPackage as createPackageRow, updatePackage as updatePackageRow, deletePackage as deletePackageRow } from '@/services/packages';
 import { createAddOn as createAddOnRow, updateAddOn as updateAddOnRow, deleteAddOn as deleteAddOnRow } from '@/services/addOns';
 import { toBase64, titleCase } from '@/features/packages/utils/packages.utils';
+import { usePackages as usePackagesQuery, useAddOns as useAddOnsQuery } from '@/features/packages/api/usePackagesQueries';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+
 
 export interface PackageForm {
     name: string;
@@ -49,15 +54,26 @@ export interface AddOnForm {
 
 export const emptyAddOnForm: AddOnForm = { name: '', price: '', region: '' };
 
-export const usePackages = (props: {
-    packages: Package[];
-    setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
-    addOns: AddOn[];
-    setAddOns: React.Dispatch<React.SetStateAction<AddOn[]>>;
-    projects: Project[];
-    profile: Profile;
-}) => {
-    const { packages, setPackages, addOns, setAddOns, projects, profile } = props;
+export const usePackages = () => {
+    const queryClient = useQueryClient();
+
+    // --- Data Hooks ---
+    const { data: qPackages } = usePackagesQuery();
+    const { data: qAddOns } = useAddOnsQuery();
+    const { data: qProjects } = useProjects({ limit: 1000 });
+    const { data: qProfile } = useProfile();
+
+    const packages = qPackages || [];
+    const addOns = qAddOns || [];
+    const projects = qProjects || [];
+    const profile = qProfile || ({
+        projectTypes: [],
+        projectStatusConfig: [],
+    } as any);
+
+    // Helper for invalidation
+    const invalidate = (key: any[]) => queryClient.invalidateQueries({ queryKey: key });
+
 
     // --- UI States ---
     const [packageFormData, setPackageFormData] = useState<PackageForm>(emptyPackageForm);
@@ -284,11 +300,12 @@ export const usePackages = (props: {
         try {
             if (packageEditMode && packageEditMode !== 'new') {
                 const updated = await updatePackageRow(packageEditMode, packageData);
-                setPackages(prev => prev.map(p => p.id === packageEditMode ? updated : p));
+                invalidate(['packages']);
             } else {
                 const created = await createPackageRow(packageData as any);
-                setPackages(prev => [...prev, created]);
+                invalidate(['packages']);
             }
+
             setPackageEditMode(null);
             setPackageFormData(emptyPackageForm);
         } catch (err: any) {
@@ -302,8 +319,9 @@ export const usePackages = (props: {
         if (!window.confirm("Hapus Package ini?")) return;
         try {
             await deletePackageRow(pkgId);
-            setPackages(prev => prev.filter(p => p.id !== pkgId));
+            invalidate(['packages']);
         } catch (err) {
+
             alert('Gagal menghapus Package.');
         }
     };
@@ -320,11 +338,12 @@ export const usePackages = (props: {
         try {
             if (addOnEditMode) {
                 const updated = await updateAddOnRow(addOnEditMode, data);
-                setAddOns(prev => prev.map(a => a.id === addOnEditMode ? updated : a));
+                invalidate(['addOns']);
             } else {
                 const created = await createAddOnRow(data as any);
-                setAddOns(prev => [...prev, created]);
+                invalidate(['addOns']);
             }
+
             setAddOnEditMode(null);
             setAddOnFormData(emptyAddOnForm);
         } catch (err) {
@@ -337,8 +356,9 @@ export const usePackages = (props: {
         if (!window.confirm("Hapus Add-On ini?")) return;
         try {
             await deleteAddOnRow(id);
-            setAddOns(prev => prev.filter(a => a.id !== id));
+            invalidate(['addOns']);
         } catch (err) {
+
             alert('Gagal menghapus Add-On.');
         }
     };
@@ -360,6 +380,10 @@ export const usePackages = (props: {
         unionRegions,
         packagesByCategory,
         existingRegions,
+        addOns,
+        projects,
+        profile,
+
         
         // Handlers
         handleDurationOptionChange,

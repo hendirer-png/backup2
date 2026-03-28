@@ -20,16 +20,28 @@ const StarRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
 
 const emptyFeedbackForm = { clientName: '', rating: 5, feedback: '' };
 
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useLeads } from '@/features/leads/api/useLeadsQueries';
+
+import { useApp } from "@/app/AppContext";
+
 interface ClientReportsProps {
-    clients: Client[];
-    leads: Lead[];
-    projects: Project[];
-    feedback: ClientFeedback[];
-    setFeedback: React.Dispatch<React.SetStateAction<ClientFeedback[]>>;
-    showNotification: (message: string) => void;
+    showNotification?: (message: string) => void;
 }
 
-const ClientReports: React.FC<ClientReportsProps> = ({ clients, leads, projects, feedback, setFeedback, showNotification }) => {
+const ClientReports: React.FC<ClientReportsProps> = (props) => {
+    const { showNotification: contextShowNotification } = useApp();
+    const showNotification = props.showNotification || contextShowNotification;
+
+    const { data: qProjects } = useProjects();
+    const projects = qProjects || [];
+    const { data: qClients } = useClients();
+    const clients = qClients || [];
+    const { data: qLeads } = useLeads();
+    const leads = qLeads || [];
+    
+    const [feedback, setFeedback] = useState<ClientFeedback[]>([]);
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [manualFeedbackForm, setManualFeedbackForm] = useState(emptyFeedbackForm);

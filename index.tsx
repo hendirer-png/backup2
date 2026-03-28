@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import App from '@/app/App';
 import '@/styles/index.css';
+import { queryClient } from './src/lib/queryClient';
 
 // Disable console.log only in production (keep for debugging in dev)
 if (typeof window !== 'undefined' && typeof console !== 'undefined' && import.meta.env.PROD) {
@@ -17,6 +20,9 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   </React.StrictMode>
 );

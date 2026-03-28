@@ -66,3 +66,19 @@ export async function deleteNotification(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ is_read: true })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  const { error } = await supabase
+    .from(TABLE)
+    .update({ is_read: true })
+    .eq('is_read', false);
+  if (error) throw error;
+}

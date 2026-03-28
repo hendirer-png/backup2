@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
-import { User } from '@/types';
+import { User, Profile } from '@/types';
 import { GoogleIcon } from '@/constants';
+import { supabase } from '@/lib/supabaseClient';
+import { fromRow } from '@/services/profile';
+
 
 const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -28,44 +31,62 @@ const EyeOffIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface LoginProps {
     onLoginSuccess: (user: User) => void;
-    users: User[];
 }
 
-const Login: React.FC<LoginProps> = ({ onLoginSuccess, users }) => {
+
+const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        const cleanEmail = email.trim();
-        const cleanPassword = password.trim();
+        try {
+            // LOGIN CUSTOM: Query table 'users' directly as requested
+            const { data: userData, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', email)
+                .eq('password', password)
+                .maybeSingle();
 
-        console.log('[Login] Attempting login for:', cleanEmail);
+            if (fetchError) throw fetchError;
 
-        // Find user from the users prop (already loaded from database)
-        const user = users.find(u => u.email === cleanEmail);
-        
-        if (user) {
-            console.log('[Login] User found');
-            if (user.password === cleanPassword || user.password === password) {
-                onLoginSuccess(user);
-            } else {
-                console.warn('[Login] Password mismatch');
-                setError('Username atau kata sandi salah.');
+            if (!userData) {
+                setError('Email atau kata sandi salah.');
+                setIsLoading(false);
+                return;
             }
-        } else {
-            console.warn('[Login] No user found with email:', cleanEmail);
-            setError('Username atau kata sandi salah.');
+
+            // Map snake_case from DB to camelCase for the app
+            const loggedInUser: User = {
+                id: userData.id,
+                email: userData.email,
+                fullName: userData.full_name || 'User',
+                companyName: userData.company_name,
+                role: userData.role || 'Admin',
+                password: '', // Keamanan: jangan simpan password di memori
+                permissions: userData.permissions || [],
+                restrictedCards: userData.restricted_cards || []
+            };
+
+            console.info('[Login] Berhasil masuk menggunakan tabel custom users:', loggedInUser.email);
+            onLoginSuccess(loggedInUser);
+
+        } catch (err: any) {
+            console.error('[Login] Error:', err.message);
+            setError(err.message || 'Terjadi kesalahan sistem.');
+        } finally {
+            setIsLoading(false);
         }
-        
-        setIsLoading(false);
     };
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4 relative overflow-hidden">

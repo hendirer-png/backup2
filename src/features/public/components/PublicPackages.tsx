@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode } from '@/types';
+import { useApp } from "@/app/AppContext";
 import Modal from '@/shared/ui/Modal';
 import { CheckIcon, CameraIcon, WhatsappIcon, cleanPhoneNumber } from '@/constants';
 import { listPackages } from '@/services/packages';
@@ -11,6 +12,7 @@ import { createLead as createLeadRow } from '@/services/leads';
 import { uploadDpProof } from '@/services/storage';
 import { createTransaction } from '@/services/transactions';
 import RupiahInput from '@/shared/form/RupiahInput';
+
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -36,18 +38,18 @@ const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 interface PublicPackagesProps {
-    userProfile: Profile;
-    showNotification: (message: string) => void;
-    setClients: React.Dispatch<React.SetStateAction<Client[]>>;
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-    addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
-    cards: Card[];
-    projects: Project[];
-    promoCodes: PromoCode[];
-    setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>>;
+    userProfile?: Profile;
+    showNotification?: (message: string) => void;
+    setClients?: React.Dispatch<React.SetStateAction<Client[]>>;
+    setProjects?: React.Dispatch<React.SetStateAction<Project[]>>;
+    setTransactions?: React.Dispatch<React.SetStateAction<Transaction[]>>;
+    setCards?: React.Dispatch<React.SetStateAction<Card[]>>;
+    setLeads?: React.Dispatch<React.SetStateAction<Lead[]>>;
+    addNotification?: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
+    cards?: Card[];
+    projects?: Project[];
+    promoCodes?: PromoCode[];
+    setPromoCodes?: React.Dispatch<React.SetStateAction<PromoCode[]>>;
 }
 
 
@@ -66,11 +68,20 @@ const initialForm = {
 
 
 
-const PublicPackages: React.FC<PublicPackagesProps> = ({ userProfile: initialUserProfile, showNotification, setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards, projects, promoCodes, setPromoCodes }) => {
+const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
+    const { 
+        showNotification: contextShowNotification 
+    } = useApp();
+
+    const initialUserProfile = props.userProfile;
+    const showNotification = props.showNotification || contextShowNotification;
+    const { setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes } = props;
+
     const [packages, setPackages] = useState<Package[]>([]);
     const [addOns, setAddOns] = useState<AddOn[]>([]);
-    const [userProfile, setUserProfile] = useState<Profile>(initialUserProfile);
+    const [userProfile, setUserProfile] = useState<Profile | undefined>(initialUserProfile);
     const [isLoading, setIsLoading] = useState(true);
+
     const [error, setError] = useState<string | null>(null);
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 

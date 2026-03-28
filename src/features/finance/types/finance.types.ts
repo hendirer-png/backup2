@@ -1,17 +1,8 @@
 import { Transaction, FinancialPocket, Profile, Project, Card, TeamMember, TransactionType } from '@/types';
 
 export interface FinanceProps {
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    pockets: FinancialPocket[];
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    profile: Profile;
-    cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    teamMembers: TeamMember[];
 }
+
 
 export type FinanceTab = 'transactions' | 'pockets' | 'cards' | 'cashflow' | 'laporan' | 'laporanKartu' | 'labaProject';
 
@@ -69,6 +60,7 @@ export interface TransactionListProps {
 }
 
 export interface PocketGridProps {
+
     pockets: FinancialPocket[];
     cards: Card[];
     summary: { pocketsTotal: number };

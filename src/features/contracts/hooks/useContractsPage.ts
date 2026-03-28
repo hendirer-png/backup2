@@ -11,10 +11,9 @@ interface UseContractsPageProps {
     profile: Profile;
     packages: Package[];
     showNotification: (message: string) => void;
-    initialAction: NavigationAction | null;
-    setInitialAction: (action: NavigationAction | null) => void;
     onSignContract: (contractId: string, signatureDataUrl: string, signer: 'vendor' | 'client') => void;
 }
+
 
 export const useContractsPage = ({
     contracts,
@@ -24,10 +23,9 @@ export const useContractsPage = ({
     profile,
     packages,
     showNotification,
-    initialAction,
-    setInitialAction,
     onSignContract
 }: UseContractsPageProps) => {
+
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
@@ -101,12 +99,8 @@ export const useContractsPage = ({
                 setFormData(editFormData as any);
             } else {
                 setSelectedContract(null);
-                setSelectedClientId(initialAction?.id || '');
-                setSelectedProjectId('');
-                setFormData(initialFormState);
-                if (initialAction && initialAction.type === 'CREATE_CONTRACT_FOR_CLIENT' && initialAction.id) {
-                    setSelectedClientId(initialAction.id);
-                }
+                setSelectedClientId('');
+
             }
             setIsFormModalOpen(true);
         }
@@ -208,18 +202,7 @@ export const useContractsPage = ({
         setIsSignatureModalOpen(false);
     };
 
-    useEffect(() => {
-        if (initialAction) {
-            if (initialAction.type === 'CREATE_CONTRACT_FOR_CLIENT' && initialAction.id) {
-                handleOpenModal('add');
-            }
-            if (initialAction.type === 'VIEW_CONTRACT' && initialAction.id) {
-                const contractToView = contracts.find(c => c.id === initialAction.id);
-                if (contractToView) handleOpenModal('view', contractToView);
-            }
-            setInitialAction(null);
-        }
-    }, [initialAction, contracts]);
+
 
     const stats = useMemo(() => {
         const waitingForClient = contracts.filter(c => c.vendorSignature && !c.clientSignature).length;

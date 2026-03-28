@@ -2,12 +2,18 @@ import React from "react";
 import Sidebar from "@/layouts/Sidebar";
 import Header from "@/layouts/Header";
 import GlobalSearch from "@/layouts/GlobalSearch";
-import { useApp } from "@/app/AppProviders";
-import { ViewType } from "@/types";
+import { useApp } from "@/app/AppContext";
+import { ViewType, Profile } from "@/types";
 import { HomeIcon, FolderKanbanIcon, UsersIcon, DollarSignIcon } from "@/constants";
+import { useProfile } from "@/features/settings/api/useProfileQueries";
+import { useNotifications } from "@/hooks/useNotifications";
+
+
+
 
 const BottomNavBar: React.FC = () => {
-    const { activeView, setActiveView, projects, clients, teamMembers } = useApp();
+    const { activeView, setActiveView } = useApp();
+
     
     // We need handleNavigation from AppRoutes probably, or just define it here/in context.
     // Let's use setActiveView for now if it's enough.
@@ -65,12 +71,20 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   const { 
     activeView, setActiveView, 
     isSidebarOpen, setIsSidebarOpen, 
-    currentUser, handleLogout, profile,
+    currentUser, handleLogout,
     setIsSearchOpen, isSearchOpen,
-    notifications, handleMarkAllAsRead,
-    clients, projects, teamMembers,
     notification
-  } = useApp() as any; // Cast for now to access everything comfortably
+  } = useApp();
+
+  const { data: profileData } = useProfile();
+  const profile = profileData || ({
+    projectTypes: [],
+    projectStatusConfig: [],
+    eventTypes: [],
+  } as Profile);
+
+  const { notifications, handleMarkAllAsRead } = useNotifications();
+
 
   const handleNavigation = (view: any) => {
       const pathMap: any = {
@@ -142,11 +156,9 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
       <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        clients={clients}
-        projects={projects}
-        teamMembers={teamMembers}
         handleNavigation={handleNavigation}
       />
+
 
       <BottomNavBar />
     </div>

@@ -11,9 +11,10 @@ interface ProjectListProps {
     onEdit: (project: Project) => void;
     onDelete: (id: string) => void;
     onStatusChange: (projectId: string, status: string) => void;
+    onSendMessage: (project: Project) => void;
 }
 
-const ProjectList: React.FC<ProjectListProps> = ({ projects, clients, config, onViewDetails, onEdit, onDelete, onStatusChange }) => {
+const ProjectList: React.FC<ProjectListProps> = ({ projects, clients, config, onViewDetails, onEdit, onDelete, onStatusChange, onSendMessage }) => {
     return (
         <div className="space-y-4">
             {projects.length > 0 ? (
@@ -27,6 +28,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, clients, config, on
                             onViewDetails={onViewDetails}
                             onEdit={onEdit}
                             onStatusChange={(id, status) => onStatusChange(id, status)}
+                            onSendMessage={onSendMessage}
                         />
                     ))}
                 </div>

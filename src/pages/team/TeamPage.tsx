@@ -1,5 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TeamMember, AssignedTeamMember, TeamProjectPayment, Profile, Transaction, TransactionType, TeamPaymentRecord, Project, Card, FinancialPocket, PocketType, PerformanceNoteType, PerformanceNote, NavigationAction, CardType, PaymentStatus } from '@/types';
+import { useTeamMembers, useTeamProjectPayments, useTeamPaymentRecords } from '@/features/team/api/useTeamQueries';
+import { useTransactions, usePockets, useCards } from '@/features/finance/api/useFinanceQueries';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+
 import PageHeader from '@/layouts/PageHeader';
 import Modal from '@/shared/ui/Modal';
 import StatCard from '@/shared/ui/StatCard';
@@ -11,10 +17,12 @@ import { PlusIcon, PencilIcon, Trash2Icon, EyeIcon, PrinterIcon, CreditCardIcon,
 import { createTeamMember as createTeamMemberRow, updateTeamMember as updateTeamMemberRow, deleteTeamMember as deleteTeamMemberRow } from '@/services/teamMembers';
 import { markTeamPaymentStatus, listAllTeamPayments, updateTeamPaymentFee } from '@/services/teamProjectPayments';
 import { createTransaction as createTransactionApi, updateCardBalance as updateCardBalanceApi, listTransactions as listTransactionsApi } from '@/services/transactions';
-import { createTeamPaymentRecord } from '@/services/teamPaymentRecords';
+import { createTeamPaymentRecord, updateTeamPaymentRecord } from '@/services/teamPaymentRecords';
 import { updatePocket as updatePocketRow } from '@/services/pockets';
 import FreelancerProjects from '@/features/team/components/FreelancerProjects';
 import CollapsibleSection from '@/shared/ui/CollapsibleSection';
+import { useApp } from "@/app/AppContext";
+
 
 
 const formatCurrency = (amount: number) => {
@@ -276,46 +284,65 @@ const CreatePaymentTab: React.FC<CreatePaymentTabProps> = ({
 };
 
 interface FreelancersProps {
-    teamMembers: TeamMember[];
-    setTeamMembers: React.Dispatch<React.SetStateAction<TeamMember[]>>;
-    teamProjectPayments: TeamProjectPayment[];
-    setTeamProjectPayments: React.Dispatch<React.SetStateAction<TeamProjectPayment[]>>;
-    teamPaymentRecords: TeamPaymentRecord[];
-    setTeamPaymentRecords: React.Dispatch<React.SetStateAction<TeamPaymentRecord[]>>;
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    userProfile: Profile;
-    showNotification: (message: string) => void;
-    initialAction: NavigationAction | null;
-    setInitialAction: (action: NavigationAction | null) => void;
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-
-    pockets: FinancialPocket[];
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
-    cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    onSignPaymentRecord: (recordId: string, signatureDataUrl: string) => void;
-    totals: {
-        projects: number;
-        activeProjects: number;
-        clients: number;
-        activeClients: number;
-        leads: number;
-        discussionLeads: number;
-        followUpLeads: number;
-        teamMembers: number;
-        transactions: number;
-        revenue: number;
-        expense: number;
-    };
+    showNotification?: (message: string) => void;
 }
 
-export const Freelancers: React.FC<FreelancersProps> = ({
-    teamMembers, setTeamMembers, teamProjectPayments, setTeamProjectPayments, teamPaymentRecords, setTeamPaymentRecords,
-    transactions, setTransactions, userProfile, showNotification, initialAction, setInitialAction, projects, setProjects,
-    pockets, setPockets, cards, setCards, onSignPaymentRecord, totals
-}) => {
+
+
+
+export const Freelancers: React.FC<FreelancersProps> = (props) => {
+    const { 
+        showNotification: contextShowNotification,
+    } = useApp();
+
+    const showNotification = props.showNotification || contextShowNotification;
+
+
+    const queryClient = useQueryClient();
+
+    // Independent Data Fetching
+    const { data: userProfileData } = useProfile();
+    const userProfile = userProfileData || ({
+        projectTypes: [],
+        projectStatusConfig: [],
+        eventTypes: [],
+    } as any);
+
+    const { data: qTeamMembers } = useTeamMembers();
+    const { data: qTeamProjectPayments } = useTeamProjectPayments();
+    const { data: qTeamPaymentRecords } = useTeamPaymentRecords();
+    const { data: qTransactions } = useTransactions();
+    const { data: qProjects } = useProjects({ limit: 1000 });
+    const { data: qPockets } = usePockets();
+    const { data: qCards } = useCards();
+
+    const teamMembers = qTeamMembers || [];
+    const teamProjectPayments = qTeamProjectPayments || [];
+    const teamPaymentRecords = qTeamPaymentRecords || [];
+    const transactions = qTransactions || [];
+    const projects = qProjects || [];
+    const pockets = qPockets || [];
+    const cards = qCards || [];
+
+    // Mock Setters to redirect setState calls to invalidate React Query (zero-rewrite pattern)
+    // By passing an updater function, we enable optimistic UX within deeply nested logic.
+    const setQueryAndInvalidate = (key: any[], updater: any) => {
+        if (typeof updater === 'function') {
+            queryClient.setQueryData(key, updater);
+        } else {
+            queryClient.setQueryData(key, updater);
+        }
+        queryClient.invalidateQueries({ queryKey: key });
+    };
+
+    const setTeamMembers: React.Dispatch<React.SetStateAction<TeamMember[]>> = (u) => setQueryAndInvalidate(['teamMembers', {}], u);
+    const setTeamProjectPayments: React.Dispatch<React.SetStateAction<TeamProjectPayment[]>> = (u) => setQueryAndInvalidate(['teamProjectPayments'], u);
+    const setTeamPaymentRecords: React.Dispatch<React.SetStateAction<TeamPaymentRecord[]>> = (u) => setQueryAndInvalidate(['teamPaymentRecords'], u);
+    const setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>> = (u) => setQueryAndInvalidate(['transactions', {}], u);
+    const setProjects: React.Dispatch<React.SetStateAction<Project[]>> = (u) => setQueryAndInvalidate(['projects', {}], u);
+    const setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>> = (u) => setQueryAndInvalidate(['pockets'], u);
+    const setCards: React.Dispatch<React.SetStateAction<Card[]>> = (u) => setQueryAndInvalidate(['cards'], u);
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
@@ -371,15 +398,7 @@ export const Freelancers: React.FC<FreelancersProps> = ({
         return teamProjectPayments.filter(p => projectIdsInRange.has(p.projectId));
     }, [teamProjectPayments, projectsInDateRange, dateFrom, dateTo]);
 
-    useEffect(() => {
-        if (initialAction && initialAction.type === 'VIEW_FREELANCER_DETAILS' && initialAction.id) {
-            const memberToView = teamMembers.find(m => m.id === initialAction.id);
-            if (memberToView) {
-                handleViewDetails(memberToView);
-            }
-            setInitialAction(null);
-        }
-    }, [initialAction, teamMembers, setInitialAction]);
+
 
     // Keep selectedMember up-to-date when teamMembers changes
     useEffect(() => {
@@ -833,6 +852,17 @@ export const Freelancers: React.FC<FreelancersProps> = ({
 
 
 
+    const onSignPaymentRecord = async (id: string, signature: string) => {
+        try {
+            const updated = await updateTeamPaymentRecord(id, { vendorSignature: signature });
+            setTeamPaymentRecords(prev => prev.map(r => r.id === id ? updated : r));
+            showNotification('Slip gaji berhasil ditandatangani!');
+        } catch (err: any) {
+            console.error('[Supabase][teamPaymentRecords.update] error:', err);
+            showNotification('Gagal menyimpan tanda tangan.');
+        }
+    };
+
     const handleSaveSignature = (signatureDataUrl: string) => {
         if (paymentSlipToView) {
             onSignPaymentRecord(paymentSlipToView.id, signatureDataUrl);
@@ -840,6 +870,7 @@ export const Freelancers: React.FC<FreelancersProps> = ({
         }
         setIsSignatureModalOpen(false);
     };
+
 
     const renderPaymentSlipBody = (record: TeamPaymentRecord) => {
         const member = teamMembers.find(m => m.id === record.teamMemberId);

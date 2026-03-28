@@ -1,4 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { DataLoadingWrapper, LoadingState } from '@/shared/ui/LoadingState';
+
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+
 import { Project, Client, Transaction, TransactionType, ViewType, TeamMember, Card, FinancialPocket, PocketType, Lead, LeadStatus, TeamProjectPayment, Package, ClientFeedback, ClientStatus, NavigationAction, User, ProjectStatusConfig, Profile, PaymentStatus } from '@/types';
 import StatCard from '@/shared/ui/StatCard';
 import { listCalendarEventsInRange } from '@/services/calendarEvents';
@@ -661,38 +666,60 @@ const BusinessHealthWidget: React.FC<{ projects: Project[], transactions: Transa
 };
 
 
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useTeamMembers, useTeamProjectPayments } from '@/features/team/api/useTeamQueries';
+import { useLeads } from '@/features/leads/api/useLeadsQueries';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+
+import { useApp } from "@/app/AppContext";
+import { listPackages } from '@/services/packages';
+import { listClientFeedback } from '@/services/clientFeedback';
+import { useUIStore } from '@/store/uiStore';
+
+import { useFinanceData } from '@/features/finance/hooks/useFinanceData';
+
 interface DashboardProps {
-    projects: Project[];
-    clients: Client[];
-    transactions: Transaction[];
-    teamMembers: TeamMember[];
-    cards: Card[];
-    pockets: FinancialPocket[];
-    handleNavigation: (view: ViewType, action?: NavigationAction) => void;
-    leads: Lead[];
-    teamProjectPayments: TeamProjectPayment[];
-    packages: Package[];
-    clientFeedback: ClientFeedback[];
-    currentUser: User | null;
-    projectStatusConfig: ProjectStatusConfig[];
-    profile: Profile;
-    totals: {
-        projects: number;
-        activeProjects: number;
-        clients: number;
-        activeClients: number;
-        leads: number;
-        discussionLeads: number;
-        followUpLeads: number;
-        teamMembers: number;
-        transactions: number;
-        revenue: number;
-        expense: number;
-    };
+    handleNavigation?: (view: ViewType, action?: NavigationAction) => void;
+    currentUser?: User | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ projects, clients, transactions, teamMembers, cards, pockets, handleNavigation, leads, teamProjectPayments, packages, clientFeedback, currentUser, projectStatusConfig, profile, totals }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+    handleNavigation: propsHandleNavigation, 
+    currentUser: propsCurrentUser 
+}) => {
+    const { 
+        currentUser: contextCurrentUser,
+    } = useApp();
+    const { setActiveView } = useUIStore();
+
+    const handleNavigation = useCallback((view: ViewType) => {
+        setActiveView(view);
+        const pathMap: any = {
+            [ViewType.HOMEPAGE]: "home",
+            [ViewType.DASHBOARD]: "dashboard",
+        };
+        const newPath = pathMap[view] || view.toLowerCase().replace(/ /g, "-");
+        window.location.hash = `#/${newPath}`;
+    }, [setActiveView]);
+
+    const currentUser = propsCurrentUser || contextCurrentUser;
+    const { data: profile } = useProfile();
+    const projectStatusConfig = profile?.projectStatusConfig || [];
+
+
     const [activeModal, setActiveModal] = useState<'balance' | 'projects' | 'clients' | 'teamMembers' | 'payments' | null>(null);
+
+    // Phase 4 Decoupling: Use hooks for fresh data
+    const { data: projects = [] } = useProjects();
+    const { data: clients = [] } = useClients();
+    const { data: leads = [] } = useLeads();
+    const { data: teamMembers = [] } = useTeamMembers();
+    const { data: teamProjectPayments = [] } = useTeamProjectPayments();
+    const { transactions, cards, pockets } = useFinanceData();
+
+    const { data: packages = [] } = useQuery({ queryKey: ['packages'], queryFn: listPackages });
+    const { data: clientFeedback = [] } = useQuery({ queryKey: ['clientFeedback'], queryFn: listClientFeedback });
 
     const getSubStatusDisplay = (project: Project) => {
         if (project.activeSubStatuses?.length) {
@@ -703,6 +730,11 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, transactions, 
         }
         return project.status;
     };
+
+
+
+
+
 
     const summary = useMemo(() => {
         const now = new Date();
@@ -721,20 +753,31 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, clients, transactions, 
 
         const unpaidInvoices = projects.filter(p => p.paymentStatus !== PaymentStatus.LUNAS && p.status !== 'Dibatalkan').length;
 
+        const activeProjs = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').length;
+        const activeClis = clients.filter(c => c.status === ClientStatus.ACTIVE).length;
+
         return {
-            totalBalance: cards.reduce((sum, c) => sum + c.balance, 0),
-            activeProjects: totals.activeProjects,
-            activeClients: totals.activeClients,
-            totalteamMembers: totals.teamMembers,
+            totalBalance: cards.reduce((sum, c) => sum + Number(c.balance), 0),
+            activeProjects: activeProjs,
+            activeClients: activeClis,
+            totalteamMembers: teamMembers.length,
             eventsThisMonth,
             incomeThisMonth,
             unpaidInvoices
         };
-    }, [cards, totals.activeProjects, totals.activeClients, totals.teamMembers, projects, transactions]);
+    }, [cards, projects, clients, teamMembers.length, transactions]);
 
     const activeProjects = useMemo(() => projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan'), [projects]);
     const activeClients = useMemo(() => clients.filter(c => c.status === ClientStatus.ACTIVE), [clients]);
     const unpaidTeamPayments = useMemo(() => teamProjectPayments.filter(p => p.status === PaymentStatus.BELUM_BAYAR), [teamProjectPayments]);
+
+    if (!profile) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <LoadingState size="large" />
+            </div>
+        );
+    }
 
     const modalTitles: { [key: string]: string } = {
         balance: 'Rincian Saldo',

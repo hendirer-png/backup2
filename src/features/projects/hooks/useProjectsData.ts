@@ -1,26 +1,37 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Project, Client, TeamMember, TeamProjectPayment, Transaction, Card, FinancialPocket } from '@/features/projects/types/project.types';
 import { listProjectsWithRelations } from '@/services/projects';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useTransactions } from '@/features/finance/api/useFinanceQueries';
 
 interface UseProjectsDataProps {
-    initialProjects: Project[];
-    clients: Client[];
     teamMembers: TeamMember[];
-    transactions: Transaction[];
     showNotification: (msg: string) => void;
 }
 
 export const useProjectsData = ({
-    initialProjects,
-    clients,
     teamMembers,
-    transactions,
     showNotification
 }: UseProjectsDataProps) => {
-    const [projects, setProjects] = useState<Project[]>(initialProjects);
-    const [isLoading, setIsLoading] = useState(false);
+    // 1. Fetch data from React Query instead of relying solely on props!
+    const { data: queryProjects, isLoading: isQueryLoading } = useProjects({ limit: 50 });
+    const { data: queryClients } = useClients({ limit: 50 });
+    const { data: queryTransactions } = useTransactions({ limit: 50 });
+
+    const [projects, setProjects] = useState<Project[]>([]);
+    const clients = queryClients || [];
+    const transactions = queryTransactions || [];
+
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    // Sync Query Cache -> Local State (Migration Step)
+    useEffect(() => {
+        if (queryProjects) {
+            setProjects(queryProjects as unknown as Project[]);
+        }
+    }, [queryProjects]);
 
     const totals = useMemo(() => {
         const activeProjectsCount = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').length;
@@ -62,8 +73,7 @@ export const useProjectsData = ({
     return {
         projects,
         setProjects,
-        isLoading,
-        setIsLoading,
+        isLoading: isQueryLoading,
         hasMore,
         isLoadingMore,
         loadMoreProjects,

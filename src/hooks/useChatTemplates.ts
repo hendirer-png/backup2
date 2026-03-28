@@ -1,8 +1,3 @@
-/**
- * React Hook untuk Chat Templates
- * Menyediakan interface mudah untuk mengelola chat templates
- */
-
 import { useState, useEffect, useCallback } from 'react';
 import type { ChatTemplate, Profile } from '@/types';
 import {
@@ -16,12 +11,17 @@ import {
   validateTemplate,
 } from '@/services/chatTemplatesOffline';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
 
-export function useChatTemplates(userProfile?: Profile) {
+export function useChatTemplates() {
+  const { data: userProfileData } = useProfile();
+  const userProfile = userProfileData as Profile | undefined;
+  
   const [templates, setTemplates] = useState<ChatTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isOnline } = useOfflineSync();
+
 
   // Load templates
   const loadTemplates = useCallback(async () => {

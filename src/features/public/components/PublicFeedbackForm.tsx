@@ -3,10 +3,6 @@ import { ClientFeedback, SatisfactionLevel } from '@/types';
 import { StarIcon } from '@/constants';
 import { createClientFeedback } from '@/services/clientFeedback';
 
-interface PublicFeedbackFormProps {
-    setClientFeedback: React.Dispatch<React.SetStateAction<ClientFeedback[]>>;
-}
-
 const getSatisfactionFromRating = (rating: number): SatisfactionLevel => {
     if (rating >= 5) return SatisfactionLevel.VERY_SATISFIED;
     if (rating >= 4) return SatisfactionLevel.SATISFIED;
@@ -14,7 +10,8 @@ const getSatisfactionFromRating = (rating: number): SatisfactionLevel => {
     return SatisfactionLevel.UNSATISFIED;
 };
 
-const PublicFeedbackForm: React.FC<PublicFeedbackFormProps> = ({ setClientFeedback }) => {
+const PublicFeedbackForm: React.FC = () => {
+
     const [formState, setFormState] = useState({
         clientName: '',
         rating: 0,
@@ -49,9 +46,9 @@ const PublicFeedbackForm: React.FC<PublicFeedbackFormProps> = ({ setClientFeedba
         };
 
         try {
-            const created = await createClientFeedback(payload);
-            setClientFeedback(prev => [created, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            await createClientFeedback(payload);
             setIsSubmitted(true);
+
         } catch (err: any) {
             alert('Gagal mengirim masukan. Silakan coba lagi.');
         } finally {

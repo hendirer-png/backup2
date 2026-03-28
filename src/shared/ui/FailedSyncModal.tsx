@@ -5,8 +5,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Modal from '@/shared/ui/Modal';
-import { offlineStorage, PendingOperation } from '@/shared/services/offlineStorage';
-import { syncManager } from '@/shared/services/syncManager';
+import { offlineStorage, PendingOperation } from '@/services/offlineStorage';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { syncManager } from '@/services/syncManager';
+
 import { AlertCircleIcon, Trash2Icon, CheckCircleIcon } from '@/constants';
 
 // RefreshCw Icon

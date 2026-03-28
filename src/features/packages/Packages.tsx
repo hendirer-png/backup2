@@ -1,30 +1,31 @@
 import React from 'react';
 import { Package, AddOn, Project, Profile, REGIONS } from '@/types';
 import PageHeader from '@/layouts/PageHeader';
-import { PlusIcon, InfoIcon, Share2Icon, ChevronRightIcon, PackageIcon } from '@/constants';
+import { PlusIcon, InfoIcon, Share2Icon, ChevronRightIcon, PackageIcon, GalleryHorizontalIcon } from '@/constants';
 import { usePackages, emptyPackageForm, emptyAddOnForm, PackageForm, AddOnForm } from '@/features/packages/hooks/usePackages';
 import PackageCard from '@/features/packages/components/PackageCard';
 import AddOnSection from '@/features/packages/components/AddOnSection';
 import PackageFormModal from '@/features/packages/components/PackageFormModal';
 import { PackageInfoModal, PackageShareModal } from '@/features/packages/components/PackageModals';
 import GalleryUpload from '@/features/public/components/GalleryUpload';
-import { useApp } from '@/app/AppProviders';
+import PromoCodes, { PromoCodesHandle } from '@/features/promo/PromoCodes';
+import { useApp } from "@/app/AppContext";
+import { PromoCode } from '@/types';
 
 interface PackagesProps {
-    packages: Package[];
-    setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
-    addOns: AddOn[];
-    setAddOns: React.Dispatch<React.SetStateAction<AddOn[]>>;
-    projects: Project[];
-    profile: Profile;
 }
 
-const Packages: React.FC<PackagesProps> = (props) => {
+
+const Packages: React.FC<PackagesProps> = () => {
     const { showNotification } = useApp();
-    const [activeTab, setActiveTab] = React.useState<'packages' | 'galleries'>(() => {
+    const [activeTab, setActiveTab] = React.useState<'packages' | 'galleries' | 'promocodes'>(() => {
         const hash = window.location.hash;
-        return hash.includes('gallery') || hash.includes('pricelist-upload') ? 'galleries' : 'packages';
+        if (hash.includes('gallery') || hash.includes('pricelist-upload')) return 'galleries';
+        if (hash.includes('promo-codes')) return 'promocodes';
+        return 'packages';
     });
+
+    const promoCodesRef = React.useRef<PromoCodesHandle>(null);
 
     const {
         packageFormData, setPackageFormData,
@@ -40,6 +41,9 @@ const Packages: React.FC<PackagesProps> = (props) => {
         unionRegions,
         packagesByCategory,
         existingRegions,
+        addOns,
+        projects,
+        profile,
         handleDurationOptionChange,
         addDurationOption,
         removeDurationOption,
@@ -56,7 +60,8 @@ const Packages: React.FC<PackagesProps> = (props) => {
         handlePackageDelete,
         handleAddOnSubmit,
         handleAddOnDelete
-    } = usePackages(props);
+    } = usePackages();
+
 
     const copyPackagesLinkToClipboard = () => {
         navigator.clipboard.writeText(publicPackagesUrl)
@@ -72,51 +77,77 @@ const Packages: React.FC<PackagesProps> = (props) => {
 
     return (
         <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Top Navigation Tabs */}
+            <div className="flex p-1 bg-brand-surface/60 backdrop-blur-md rounded-2xl border border-brand-border/40 w-fit">
+                <button
+                    onClick={() => { setActiveTab('packages'); window.location.hash = '#/packages'; }}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${activeTab === 'packages' ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-accent hover:bg-brand-accent/5'}`}
+                >
+                    <PackageIcon className="w-4 h-4" />
+                    Paket & Add-on
+                </button>
+                <button
+                    onClick={() => { setActiveTab('galleries'); window.location.hash = '#/gallery'; }}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${activeTab === 'galleries' ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-accent hover:bg-brand-accent/5'}`}
+                >
+                    <GalleryHorizontalIcon className="w-4 h-4" />
+                    Portofolio
+                </button>
+                <button
+                    onClick={() => { setActiveTab('promocodes'); window.location.hash = '#/promo-codes'; }}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${activeTab === 'promocodes' ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-accent hover:bg-brand-accent/5'}`}
+                >
+                    <PlusIcon className="w-4 h-4" />
+                    Kode Promo
+                </button>
+            </div>
+
             {/* Header Section */}
             <PageHeader
-                title="Katalog Produk & Layanan"
-                subtitle="Susun Package wedding terbaik, kelola tambahan jasa (Add-ons), dan update portofolio visual Anda."
-                icon={<PackageIcon className="w-6 h-6" />}
+                title={activeTab === 'packages' ? "Katalog Produk & Layanan" : activeTab === 'galleries' ? "Portofolio Visual" : "Kode Promo & Diskon"}
+                subtitle={activeTab === 'packages' 
+                    ? "Susun Package wedding terbaik, kelola tambahan jasa (Add-ons), dan update portofolio visual Anda."
+                    : activeTab === 'galleries'
+                    ? "Kelola galeri foto dan video portofolio Anda untuk memukau calon pengantin."
+                    : "Buat penawaran terbatas dan kode voucher untuk menarik minat calon pengantin."
+                }
+                icon={activeTab === 'packages' ? <PackageIcon className="w-6 h-6" /> : activeTab === 'galleries' ? <GalleryHorizontalIcon className="w-6 h-6" /> : <PlusIcon className="w-6 h-6" />}
             >
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                    {/* Tab Switcher */}
-                    <div className="flex p-1 bg-white/10 rounded-xl border border-white/10 shrink-0">
-                        <button 
-                            onClick={() => { setActiveTab('packages'); window.location.hash = '#/packages'; }}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'packages' ? 'bg-white text-blue-600 shadow-lg' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-                        >
-                            Paket & Add-on
-                        </button>
-                        <button 
-                            onClick={() => { setActiveTab('galleries'); window.location.hash = '#/gallery'; }}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'galleries' ? 'bg-white text-blue-600 shadow-lg' : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-                        >
-                            Portofolio
-                        </button>
-                    </div>
-
                     <div className="flex items-center gap-2">
-                        <button 
-                            onClick={() => setIsInfoModalOpen(true)} 
+                        <button
+                            onClick={() => setIsInfoModalOpen(true)}
                             className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-all text-xs font-bold"
                         >
                             Info
                         </button>
-                        <button 
-                            onClick={() => setIsShareModalOpen(true)} 
+                        <button
+                            onClick={() => setIsShareModalOpen(true)}
                             className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-all text-xs font-bold"
                         >
                             Bagikan
                         </button>
                     </div>
 
-                    <button 
-                        onClick={() => { setPackageEditMode('new'); setPackageFormData(emptyPackageForm); }}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-600 hover:bg-blue-50 transition-all text-xs sm:text-sm font-black shadow-lg shadow-blue-900/40"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        <span>Tambah Paket</span>
-                    </button>
+                    {activeTab === 'packages' && (
+                        <button
+                            onClick={() => { setPackageEditMode('new'); setPackageFormData(emptyPackageForm); }}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-600 hover:bg-blue-50 transition-all text-xs sm:text-sm font-black shadow-lg shadow-blue-900/40"
+                        >
+                            <PlusIcon className="w-5 h-5" />
+                            <span>Tambah Paket</span>
+                        </button>
+                    )}
+
+                    {activeTab === 'promocodes' && (
+                        <button
+                            onClick={() => promoCodesRef.current?.openAddModal()}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-600 hover:bg-blue-50 transition-all text-xs sm:text-sm font-black shadow-lg shadow-blue-900/40"
+                        >
+                            <PlusIcon className="w-5 h-5" />
+                            <span>Buat Kode Promo</span>
+                        </button>
+                    )}
                 </div>
             </PageHeader>
 
@@ -163,8 +194,8 @@ const Packages: React.FC<PackagesProps> = (props) => {
                     </main>
 
                     {/* AddOns Sidebar */}
-                    <AddOnSection 
-                        addOns={props.addOns}
+                    <AddOnSection
+                        addOns={addOns}
                         regionFilter={regionFilter}
                         editMode={addOnEditMode}
                         formData={addOnFormData}
@@ -178,15 +209,23 @@ const Packages: React.FC<PackagesProps> = (props) => {
                         unionRegions={unionRegions}
                     />
                 </div>
+            ) : activeTab === 'galleries' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <GalleryUpload userProfile={profile} showNotification={showNotification} />
+                </div>
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <GalleryUpload userProfile={props.profile} showNotification={showNotification} />
+                    <PromoCodes 
+                        ref={promoCodesRef}
+                        hideHeader={true}
+                    />
                 </div>
             )}
 
+
             {/* Modals */}
             {packageEditMode && (
-                <PackageFormModal 
+                <PackageFormModal
                     isOpen={!!packageEditMode}
                     onClose={() => { setPackageEditMode(null); setPackageFormData(emptyPackageForm); }}
                     onSubmit={handlePackageSubmit}
@@ -206,20 +245,21 @@ const Packages: React.FC<PackagesProps> = (props) => {
                     onListChange={handleListChange}
                     addListItem={addListItem}
                     removeListItem={removeListItem}
-                    profile={props.profile}
+                    profile={profile}
                     existingRegions={existingRegions}
+
                     unionRegions={unionRegions}
                 />
             )}
 
             <PackageInfoModal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} />
-            
-            <PackageShareModal 
-                isOpen={isShareModalOpen} 
-                onClose={() => setIsShareModalOpen(false)} 
-                publicUrl={publicPackagesUrl} 
+
+            <PackageShareModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                publicUrl={publicPackagesUrl}
                 bookingUrl={publicBookingUrl}
-                onCopyLink={copyPackagesLinkToClipboard} 
+                onCopyLink={copyPackagesLinkToClipboard}
                 onCopyBookingLink={copyBookingLinkToClipboard}
                 regionName={regionFilter ? unionRegions.find(r => r.value === regionFilter)?.label : undefined}
             />

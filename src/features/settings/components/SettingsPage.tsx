@@ -9,12 +9,37 @@ import { ProjectSettingsTab } from '@/features/settings/components/ProjectSettin
 import { MessageSettingsTab } from '@/features/settings/components/MessageSettingsTab';
 import { UsersIcon, CashIcon, PackageIcon, LayoutGridIcon, MessageSquareIcon } from '@/constants';
 
-export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
-    const { profile, setProfile, transactions, projects, packages, users, setUsers, currentUser } = props;
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { listUsers } from '@/services/users';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
+    const { data: profile, isLoading: isProfileLoading } = useProfile();
+    const queryClient = useQueryClient();
+
+    const { data: qProjects } = useProjects();
+    const projects = qProjects || [];
+    
+    const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: listUsers });
+    
+    const setUsers = (updater: any) => {
+        const current = queryClient.getQueryData(['users']) || [];
+        const next = typeof updater === 'function' ? updater(current) : updater;
+        queryClient.setQueryData(['users'], next);
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+    };
+
+    if (isProfileLoading || !profile) {
+        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Pengaturan...</div>;
+    }
+
     const {
         activeTab, setActiveTab, showSuccess, successMessage, isSaving, saveError,
         showNotification, handleProfileSubmit, handleCategoryUpdate
-    } = useSettingsPage({ profile, setProfile, users, setUsers, currentUser });
+    } = useSettingsPage({ currentUser });
+
 
     // Category Inputs (Internal to page state)
     const [incomeInput, setIncomeInput] = useState('');
@@ -55,13 +80,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = (props) => {
             </nav>
 
             <main className="min-h-[60vh] pb-20">
-                {activeTab === 'profile' && <ProfileSettingsTab profile={profile} setProfile={setProfile} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />}
+                {activeTab === 'profile' && <ProfileSettingsTab profile={profile} setProfile={() => {}} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />}
                 {activeTab === 'finance' && <FinanceSettingsTab profile={profile} incomeCategoryInput={incomeInput} setIncomeCategoryInput={setIncomeInput} editingIncomeCategory={editIncome} setEditingIncomeCategory={setEditIncome} expenseCategoryInput={expenseInput} setExpenseCategoryInput={setExpenseInput} editingExpenseCategory={editExpense} setEditingExpenseCategory={setEditExpense} handleCategoryUpdate={handleCategoryUpdate} />}
                 {activeTab === 'team' && <TeamSettingsTab users={users} setUsers={setUsers} currentUser={currentUser} />}
                 {activeTab === 'packages' && <PackageSettingsTab profile={profile} packageCategoryInput={pkgCatInput} setPackageCategoryInput={setPkgCatInput} editingPackageCategory={editPkgCat} setEditingPackageCategory={setEditPkgCat} handleCategoryUpdate={handleCategoryUpdate} />}
-                {activeTab === 'projects' && <ProjectSettingsTab profile={profile} setProfile={setProfile} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />}
-                {activeTab === 'messages' && <MessageSettingsTab profile={profile} setProfile={setProfile} showSuccess={showNotification} />}
+                {activeTab === 'projects' && <ProjectSettingsTab profile={profile} setProfile={() => {}} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />}
+                {activeTab === 'messages' && <MessageSettingsTab profile={profile} setProfile={() => {}} showSuccess={showNotification} />}
             </main>
         </div>
     );
 };
+

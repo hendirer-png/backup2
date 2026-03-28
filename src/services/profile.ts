@@ -12,7 +12,7 @@ function asJsonObject<T = any>(value: any): T | null {
   return null;
 }
 
-function fromRow(row: any): Profile {
+export function fromRow(row: any): Profile {
   return {
     id: row.id,
     adminUserId: row.admin_user_id || '',

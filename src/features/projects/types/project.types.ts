@@ -44,37 +44,14 @@ export { TransactionType, PaymentStatus };
 
 
 export interface ProjectsProps {
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    clients: Client[];
     packages: Package[];
     teamMembers: TeamMember[];
     teamProjectPayments: TeamProjectPayment[];
     setTeamProjectPayments: React.Dispatch<React.SetStateAction<TeamProjectPayment[]>>;
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    initialAction: NavigationAction | null;
-    setInitialAction: (action: NavigationAction | null) => void;
     profile: Profile;
     showNotification: (message: string) => void;
-    cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    pockets: FinancialPocket[];
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
-    totals: {
-        projects: number;
-        activeProjects: number;
-        clients: number;
-        activeClients: number;
-        leads: number;
-        discussionLeads: number;
-        followUpLeads: number;
-        teamMembers: number;
-        transactions: number;
-        revenue: number;
-        expense: number;
-    };
 }
+
 
 export type SharePreviewData = {
     title: string;
@@ -183,7 +160,19 @@ export interface ProjectFiltersProps {
 }
 
 export interface ProjectAnalyticsProps {
-    totals: ProjectsProps['totals'];
+    totals: {
+        projects: number;
+        activeProjects: number;
+        clients: number;
+        activeClients: number;
+        leads: number;
+        discussionLeads: number;
+        followUpLeads: number;
+        teamMembers: number;
+        transactions: number;
+        revenue: number;
+        expense: number;
+    };
     onStatCardClick: (type: 'count' | 'deadline' | 'top_type' | 'status_dist') => void;
 }
 

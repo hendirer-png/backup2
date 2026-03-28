@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { PromoCode, Project } from '@/types';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { PromoCode } from '@/types';
 import PageHeader from '@/layouts/PageHeader';
 import Modal from '@/shared/ui/Modal';
 import { PlusIcon, PencilIcon, Trash2Icon, PackageIcon, DollarSignIcon, CalendarIcon } from '@/constants';
 import { createPromoCode, updatePromoCode, deletePromoCode } from '@/services/promoCodes';
 import CollapsibleSection from '@/shared/ui/CollapsibleSection';
+import { usePromoCodes } from '@/features/promo/api/usePromoQueries';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useApp } from "@/app/AppContext";
+
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -20,13 +25,27 @@ const emptyFormState = {
 };
 
 interface PromoCodesProps {
-    promoCodes: PromoCode[];
-    setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>>;
-    projects: Project[];
-    showNotification: (message: string) => void;
+    hideHeader?: boolean;
 }
 
-const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, projects, showNotification }) => {
+
+export interface PromoCodesHandle {
+    openAddModal: () => void;
+}
+
+const PromoCodes = forwardRef<PromoCodesHandle, PromoCodesProps>(({ hideHeader }, ref) => {
+    const queryClient = useQueryClient();
+    const { showNotification } = useApp();
+
+    // Data Hooks
+    const { data: qPromoCodes } = usePromoCodes();
+    const { data: qProjects } = useProjects({ limit: 1000 });
+
+    const promoCodes = qPromoCodes || [];
+    const projects = qProjects || [];
+
+    const invalidate = () => queryClient.invalidateQueries({ queryKey: ['promoCodes'] });
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
     const [selectedCode, setSelectedCode] = useState<PromoCode | null>(null);
@@ -48,8 +67,13 @@ const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, proj
             setSelectedCode(null);
             setFormData(emptyFormState);
         }
+        setFormData(prev => ({ ...prev, ...emptyFormState }));
         setIsModalOpen(true);
     };
+
+    useImperativeHandle(ref, () => ({
+        openAddModal: () => handleOpenModal('add')
+    }));
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
@@ -79,8 +103,9 @@ const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, proj
                     maxUsage: formData.maxUsage ? Number(formData.maxUsage) : undefined,
                     expiryDate: formData.expiryDate || undefined,
                 } as any);
-                setPromoCodes(prev => [...prev, created]);
+                invalidate();
                 showNotification(`Kode promo "${created.code}" berhasil dibuat.`);
+
             } else if (selectedCode) {
                 const updated = await updatePromoCode(selectedCode.id, {
                     code: formData.code.toUpperCase(),
@@ -90,8 +115,9 @@ const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, proj
                     maxUsage: formData.maxUsage ? Number(formData.maxUsage) : undefined,
                     expiryDate: formData.expiryDate || undefined,
                 } as any);
-                setPromoCodes(prev => prev.map(c => c.id === selectedCode.id ? updated : c));
+                invalidate();
                 showNotification(`Kode promo "${updated.code}" berhasil diperbarui.`);
+
             }
         } catch (err) {
             alert('Gagal menyimpan kode promo ke database. Coba lagi.');
@@ -109,28 +135,31 @@ const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, proj
         if (!window.confirm("Apakah Anda yakin ingin menghapus kode promo ini?")) return;
         try {
             await deletePromoCode(codeId);
-            setPromoCodes(prev => prev.filter(c => c.id !== codeId));
+            invalidate();
             showNotification('Kode promo berhasil dihapus.');
         } catch (err) {
+
             alert('Gagal menghapus kode promo di database. Coba lagi.');
         }
     };
 
     return (
         <div className="space-y-6">
-            <PageHeader 
-                title="Kode Promo & Diskon" 
-                subtitle="Buat penawaran terbatas dan kode voucher untuk menarik minat calon pengantin." 
-                icon={<PackageIcon className="w-6 h-6" />}
-            >
-                <button 
-                    onClick={() => handleOpenModal('add')} 
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-600 hover:bg-blue-50 transition-all text-xs sm:text-sm font-black shadow-lg shadow-blue-900/40"
+            {!hideHeader && (
+                <PageHeader 
+                    title="Kode Promo & Diskon" 
+                    subtitle="Buat penawaran terbatas dan kode voucher untuk menarik minat calon pengantin." 
+                    icon={<PackageIcon className="w-6 h-6" />}
                 >
-                    <PlusIcon className="w-5 h-5" />
-                    <span>Buat Kode Promo</span>
-                </button>
-            </PageHeader>
+                    <button 
+                        onClick={() => handleOpenModal('add')} 
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-blue-600 hover:bg-blue-50 transition-all text-xs sm:text-sm font-black shadow-lg shadow-blue-900/40"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        <span>Buat Kode Promo</span>
+                    </button>
+                </PageHeader>
+            )}
 
             {/* Desktop Table View */}
             <div className="hidden md:block bg-brand-surface p-4 rounded-xl shadow-lg border border-brand-border">
@@ -376,6 +405,7 @@ const PromoCodes: React.FC<PromoCodesProps> = ({ promoCodes, setPromoCodes, proj
             </Modal>
         </div>
     );
-};
+});
 
 export default PromoCodes;
+

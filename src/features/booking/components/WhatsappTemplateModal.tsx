@@ -11,17 +11,17 @@ interface WhatsappTemplateModalProps {
     client: Client;
     onClose: () => void;
     showNotification: (message: string) => void;
-    userProfile: Profile;
 }
+
 
 const WhatsappTemplateModal: React.FC<WhatsappTemplateModalProps> = ({ 
     project, 
     client, 
     onClose, 
     showNotification, 
-    userProfile 
 }) => {
-    const { templates, processTemplate: processTemplateFunc, updateTemplate, isOnline } = useChatTemplates(userProfile);
+    const { templates, processTemplate: processTemplateFunc, updateTemplate, isOnline } = useChatTemplates();
+
     const [selectedTemplate, setSelectedTemplate] = useState(templates[0]?.id || '');
     const [customMessage, setCustomMessage] = useState('');
 

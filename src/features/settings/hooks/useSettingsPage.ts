@@ -1,22 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Profile, Transaction, Project, User, Package, ChatTemplate, ChecklistTemplate } from '@/types';
-import { upsertProfile } from '@/services/profile';
+import { ChatTemplate } from '@/types';
 import { CHAT_TEMPLATES, DEFAULT_BILLING_TEMPLATES } from '@/constants';
+import { useProfile, useUpdateProfile } from '@/features/settings/api/useProfileQueries';
+import { useApp } from "@/app/AppContext";
 
 interface UseSettingsPageProps {
-    profile: Profile;
-    setProfile: React.Dispatch<React.SetStateAction<Profile>>;
-    users: User[];
-    setUsers: React.Dispatch<React.SetStateAction<User[]>>;
-    currentUser: User | null;
+    currentUser: any;
 }
 
-export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentUser }: UseSettingsPageProps) => {
+
+export const useSettingsPage = ({ currentUser }: UseSettingsPageProps) => {
+    const { data: profile } = useProfile();
+    const updateProfileMutation = useUpdateProfile();
+
+
     const [activeTab, setActiveTab] = useState('profile');
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState('Perubahan berhasil disimpan!');
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+
 
     const showNotification = useCallback((msg: string) => {
         setSuccessMessage(msg);
@@ -40,8 +43,7 @@ export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentU
         setIsSaving(true);
         setSaveError('');
         try {
-            const updated = await upsertProfile(profile);
-            setProfile(updated);
+            await updateProfileMutation.mutateAsync(profile);
             showNotification('Profil berhasil diperbarui!');
         } catch (err: any) {
             setSaveError(err?.message || 'Gagal menyimpan profil.');
@@ -50,16 +52,16 @@ export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentU
         }
     };
 
-    // Category Management Logic (Generic)
-    const handleCategoryUpdate = async (field: keyof Profile, categories: string[]) => {
+
+    const handleCategoryUpdate = async (field: keyof any, categories: string[]) => {
         try {
-            const updated = await upsertProfile({ id: profile.id, [field]: categories } as any);
-            setProfile(updated);
+            await updateProfileMutation.mutateAsync({ id: profile.id, [field]: categories } as any);
             showNotification('Kategori berhasil diperbarui!');
         } catch (err: any) {
             alert('Gagal menyimpan: ' + (err?.message || 'Coba lagi.'));
         }
     };
+
 
     // Chat Template Logic
     const [chatTemplates, setChatTemplates] = useState<ChatTemplate[]>(profile.chatTemplates || CHAT_TEMPLATES);
@@ -68,8 +70,7 @@ export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentU
     const persistChatTemplates = async (updated: ChatTemplate[]) => {
         setIsSaving(true);
         try {
-            const updatedProfile = await upsertProfile({ ...profile, chatTemplates: updated } as any);
-            setProfile(updatedProfile);
+            await updateProfileMutation.mutateAsync({ ...profile, chatTemplates: updated } as any);
             setChatTemplates(updated);
             showNotification('Template berhasil disimpan!');
         } catch (err: any) {
@@ -79,11 +80,11 @@ export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentU
         }
     };
 
+
     const persistBillingTemplates = async (updated: ChatTemplate[]) => {
         setIsSaving(true);
         try {
-            const updatedProfile = await upsertProfile({ ...profile, billingTemplates: updated } as any);
-            setProfile(updatedProfile);
+            await updateProfileMutation.mutateAsync({ ...profile, billingTemplates: updated } as any);
             setBillingTemplates(updated);
             showNotification('Template tagihan berhasil disimpan!');
         } catch (err: any) {
@@ -92,6 +93,7 @@ export const useSettingsPage = ({ profile, setProfile, users, setUsers, currentU
             setIsSaving(false);
         }
     };
+
 
     return {
         activeTab,

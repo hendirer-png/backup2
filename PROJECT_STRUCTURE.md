@@ -7,42 +7,38 @@ This document provides a hierarchical overview of the project's file and directo
 ├── .github/
 │   └── workflows/
 │       └── ios-testflight.yml
-├── .kiro
-├── .orchids
+├── .kiro/
+├── .orchids/
+├── .vscode/
 ├── android/
-├── app/
-│   └── index.css
 ├── dist/
 ├── docs/
-│   ├── build_output.txt
-│   ├── output.txt
 │   ├── PERPORMA WEB
+│   ├── SUPABASE_BACKUP_GUIDE.md
+│   ├── build_output.txt
+│   ├── metadata.json
+│   ├── optimization-config.json
+│   ├── output.txt
 │   └── reverensi nama2 kontne unutk forontand
 ├── ios/
 ├── node_modules/
 ├── public/
 ├── scripts/
+│   ├── backup-database.js
 │   ├── check_all_delimiters.cjs
 │   ├── check_all_tables.cjs
 │   ├── check_balance.cjs
-│   ├── check_braces_stack.cjs
-│   ├── check_braces_stack_v2.cjs
 │   ├── check_db.cjs
-│   ├── check_profile_demo.cjs
-│   ├── check_rpc.cjs
-│   ├── check_tables.cjs
-│   ├── count_quotes.cjs
-│   ├── find_hadi.ts
-│   ├── find_odd_quotes.cjs
-│   ├── inspect_cols.cjs
-│   ├── inspect_missing_tx.cjs
-│   ├── print_last_lines.cjs
+│   ├── deploy-optimizations.ts
 │   ├── repair_transactions.cjs
 │   ├── seed_profile.cjs
-│   ├── test_insert.cjs
 │   ├── validate-terminology.ts
-│   └── ...
+│   └── ... (40+ maintenance and migration scripts)
 ├── src/
+│   ├── app/
+│   │   ├── App.tsx
+│   │   ├── AppProviders.tsx
+│   │   └── AppRoutes.tsx
 │   ├── constants/
 │   │   └── index.tsx
 │   ├── features/
@@ -69,20 +65,15 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   │   │   ├── ClientKPI.tsx
 │   │   │   │   ├── ClientLinkModals.tsx
 │   │   │   │   ├── ClientPortal.tsx
-│   │   │   │   ├── ClientsPage.tsx
 │   │   │   │   ├── ClientStatsCards.tsx
 │   │   │   │   ├── ClientUnpaidList.tsx
+│   │   │   │   ├── ClientsPage.tsx
+│   │   │   │   ├── InvoicePreviewModal.tsx
 │   │   │   │   ├── NewClientsChart.tsx
-│   │   │   │   └── ProjectPaymentCard.tsx
+│   │   │   │   ├── ProjectPaymentCard.tsx
+│   │   │   │   └── ReceiptPreviewModal.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useClientActions.ts
-│   │   │   │   ├── useClientPortal.ts
-│   │   │   │   ├── useClients.ts
-│   │   │   │   ├── useClientsData.ts
-│   │   │   │   ├── useClientsFilters.ts
-│   │   │   │   └── useClientsPage.ts
 │   │   │   ├── types/
-│   │   │   │   └── index.ts
 │   │   │   └── utils/
 │   │   ├── communication/
 │   │   │   └── components/
@@ -102,21 +93,39 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   │   ├── constants/
 │   │   │   │   └── contracts.constants.ts
 │   │   │   ├── hooks/
-│   │   │   │   └── useContractsPage.ts
 │   │   │   └── utils/
 │   │   ├── finance/
 │   │   │   ├── components/
+│   │   │   │   ├── Add-invoice/
+│   │   │   │   ├── BatchPayment.tsx
+│   │   │   │   ├── CardGrid.tsx
+│   │   │   │   ├── CardReportTab.tsx
+│   │   │   │   ├── CashflowView.tsx
+│   │   │   │   ├── FinanceCharts.tsx
+│   │   │   │   ├── FinanceHeader.tsx
+│   │   │   │   ├── FinanceModals.tsx
+│   │   │   │   ├── FinanceStats.tsx
+│   │   │   │   ├── FinancialAssets.tsx
+│   │   │   │   ├── InvoiceDocument.tsx
+│   │   │   │   ├── PocketGrid.tsx
+│   │   │   │   ├── ProfitabilityReportView.tsx
+│   │   │   │   ├── ReportView.tsx
+│   │   │   │   ├── TransactionList.tsx
+│   │   │   │   └── TransactionTable.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useFinance.ts
-│   │   │   │   ├── useFinanceActions.ts
-│   │   │   │   ├── useFinanceAnalytics.ts
-│   │   │   │   ├── useFinanceData.ts
-│   │   │   │   └── useFinanceFilters.ts
 │   │   │   ├── types/
 │   │   │   ├── utils/
 │   │   │   └── FinancePage.tsx
 │   │   ├── leads/
 │   │   │   ├── components/
+│   │   │   │   ├── ConvertLeadForm.tsx
+│   │   │   │   ├── LeadCard.tsx
+│   │   │   │   ├── LeadFilterBar.tsx
+│   │   │   │   ├── LeadForm.tsx
+│   │   │   │   ├── LeadKanban.tsx
+│   │   │   │   ├── LeadsAnalytics.tsx
+│   │   │   │   ├── LeadsPage.tsx
+│   │   │   │   └── ShareMessageModal.tsx
 │   │   │   ├── hooks/
 │   │   │   ├── types/
 │   │   │   └── utils/
@@ -127,30 +136,33 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   │   │   ├── PackageFormModal.tsx
 │   │   │   │   └── PackageModals.tsx
 │   │   │   ├── hooks/
-│   │   │   │   └── usePackages.ts
 │   │   │   ├── utils/
-│   │   │   │   └── packages.utils.ts
 │   │   │   └── Packages.tsx
 │   │   ├── projects/
 │   │   │   ├── components/
+│   │   │   │   ├── ProjectDetailModal/
+│   │   │   │   │   ├── ProjectChecklistTab/
+│   │   │   │   │   ├── ProjectDetailsTab.tsx
+│   │   │   │   │   ├── ProjectFilesTab.tsx
+│   │   │   │   │   └── index.tsx
+│   │   │   │   ├── BriefingModal.tsx
 │   │   │   │   ├── CalendarView.tsx
+│   │   │   │   ├── ChecklistPortal.tsx
+│   │   │   │   ├── ProgressTracker.tsx
 │   │   │   │   ├── ProjectAnalytics.tsx
-│   │   │   │   ├── ProjectDetailModal.tsx
+│   │   │   │   ├── ProjectCard.tsx
+│   │   │   │   ├── ProjectDetailView.tsx
 │   │   │   │   ├── ProjectFilters.tsx
 │   │   │   │   ├── ProjectForm.tsx
 │   │   │   │   ├── ProjectHeader.tsx
 │   │   │   │   ├── ProjectKanbanView.tsx
+│   │   │   │   ├── ProjectList.tsx
 │   │   │   │   ├── ProjectListView.tsx
-│   │   │   │   └── QuickStatusModal.tsx
+│   │   │   │   ├── QuickStatusModal.tsx
+│   │   │   │   └── StatModal.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useProjectActions.ts
-│   │   │   │   ├── useProjectData.ts
-│   │   │   │   ├── useProjectForm.ts
-│   │   │   │   └── useProjectsPage.ts
 │   │   │   ├── types/
-│   │   │   │   └── project.types.ts
 │   │   │   ├── utils/
-│   │   │   │   └── project.utils.ts
 │   │   │   └── ProjectsPage.tsx
 │   │   ├── promo/
 │   │   │   └── PromoCodes.tsx
@@ -168,31 +180,29 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   │       └── SuggestionForm.tsx
 │   │   ├── settings/
 │   │   │   ├── components/
+│   │   │   │   ├── CategoryManager.tsx
+│   │   │   │   ├── ChecklistTemplateSettings.tsx
+│   │   │   │   ├── FinanceSettingsTab.tsx
+│   │   │   │   ├── MessageSettingsTab.tsx
+│   │   │   │   ├── PackageSettingsTab.tsx
+│   │   │   │   ├── ProfileSettingsTab.tsx
+│   │   │   │   ├── ProjectSettingsTab.tsx
+│   │   │   │   ├── ProjectStatusManager.tsx
+│   │   │   │   ├── SettingsPage.tsx
+│   │   │   │   ├── ShareTemplateItem.tsx
+│   │   │   │   ├── TeamSettingsTab.tsx
+│   │   │   │   ├── TemplateCrudSection.tsx
+│   │   │   │   └── ToggleSwitch.tsx
 │   │   │   ├── hooks/
 │   │   │   ├── types/
 │   │   │   ├── utils/
 │   │   │   └── index.ts
 │   │   ├── team/
-│   │   │   ├── components/
-│   │   │   │   ├── TeamMemberDetail/
-│   │   │   │   │   ├── CreatePaymentTab.tsx
-│   │   │   │   │   ├── index.tsx
-│   │   │   │   │   ├── PaymentsTab.tsx
-│   │   │   │   │   ├── PerformanceTab.tsx
-│   │   │   │   │   └── ProjectsTab.tsx
-│   │   │   │   ├── FreelancerPortal.tsx
-│   │   │   │   ├── FreelancerProjects.tsx
-│   │   │   │   ├── PaymentSlip.tsx
-│   │   │   │   ├── PaymentSlipModal.tsx
-│   │   │   │   ├── TeamInfoModal.tsx
-│   │   │   │   ├── TeamMemberModal.tsx
-│   │   │   │   ├── TeamStatsSection.tsx
-│   │   │   │   └── TeamTable.tsx
-│   │   │   ├── hooks/
-│   │   │   │   └── useTeamPage.ts
-│   │   │   ├── types/
-│   │   │   └── utils/
+│   │   │   └── components/
+│   │   │       ├── FreelancerPortal.tsx
+│   │   │       └── FreelancerProjects.tsx
 │   │   └── test/
+│   │       └── TestSignature.tsx
 │   ├── hooks/
 │   │   ├── useAppData.ts
 │   │   ├── useChatTemplates.ts
@@ -208,11 +218,14 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   ├── usePagination.ts
 │   │   └── useSearchableInfiniteScroll.ts
 │   ├── layouts/
+│   │   ├── PageHeader.tsx
+│   │   └── Sidebar.tsx
 │   ├── lib/
 │   ├── pages/
 │   │   ├── auth/
 │   │   │   └── LoginPage.tsx
 │   │   ├── booking/
+│   │   │   └── BookingPage.tsx
 │   │   ├── clients/
 │   │   │   └── ClientsPage.tsx
 │   │   ├── contracts/
@@ -226,52 +239,30 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   ├── leads/
 │   │   │   └── LeadsPage.tsx
 │   │   ├── projects/
-│   │   │   └── ProjectsPage.tsx (Modular Wrapper)
+│   │   │   └── ProjectsPage.tsx
 │   │   ├── settings/
 │   │   │   └── SettingsPage.tsx
 │   │   └── team/
 │   │       └── TeamPage.tsx
+│   ├── routes/
+│   │   ├── privateRoutes.ts
+│   │   └── publicRoutes.ts
 │   ├── services/
 │   │   ├── addOns.ts
-│   │   ├── balanceValidator.test.ts
 │   │   ├── balanceValidator.ts
 │   │   ├── calendarEvents.ts
 │   │   ├── cards.ts
-│   │   ├── chatTemplatesOffline.ts
-│   │   ├── clientFeedback.ts
 │   │   ├── clients.ts
-│   │   ├── clientsOffline.ts
 │   │   ├── contracts.ts
-│   │   ├── data-loader.ts
-│   │   ├── deduplication.ts
-│   │   ├── galleries.ts
-│   │   ├── geminiSDK.ts
 │   │   ├── leads.ts
 │   │   ├── notifications.ts
-│   │   ├── offlineStorage.ts
-│   │   ├── optimized-queries.ts
 │   │   ├── packages.ts
-│   │   ├── pagination-helper.ts
-│   │   ├── pockets.ts
-│   │   ├── profile.ts
-│   │   ├── projectPrintItems.ts
 │   │   ├── projects.ts
-│   │   ├── projectsOffline.ts
-│   │   ├── projectSubStatusConfirmations.ts
-│   │   ├── projectTeamAssignments.ts
 │   │   ├── promoCodes.ts
-│   │   ├── storage.ts
-│   │   ├── suggestions.ts
-│   │   ├── syncManager.ts
 │   │   ├── teamMembers.ts
-│   │   ├── teamPaymentRecords.ts
-│   │   ├── teamProjectPayments.ts
 │   │   ├── transactions.ts
-│   │   ├── transactionsOffline.ts
 │   │   ├── users.ts
-│   │   ├── weddingDayChecklist.test.ts
-│   │   ├── weddingDayChecklist.ts
-│   │   └── weddingDayChecklistCategories.ts
+│   │   └── ... (40+ domain-specific services)
 │   ├── shared/
 │   │   ├── form/
 │   │   │   ├── FilterBar.tsx
@@ -298,26 +289,42 @@ This document provides a hierarchical overview of the project's file and directo
 │   │   │   ├── StatCardModal.tsx
 │   │   │   └── SwipeableCard.tsx
 │   │   └── README_UIUX_COMPONENTS.md
+│   ├── styles/
+│   │   ├── components/
+│   │   │   ├── button.css
+│   │   │   ├── form.css
+│   │   │   ├── invoice.css
+│   │   │   ├── navigation.css
+│   │   │   └── table.css
+│   │   ├── print/
+│   │   │   └── print.css
+│   │   ├── templates/
+│   │   │   ├── classic.css
+│   │   │   ├── gallery.css
+│   │   │   └── modern.css
+│   │   ├── animations.css
+│   │   ├── base.css
+│   │   ├── utilities.css
+│   │   └── variables.css
 │   ├── types/
 │   │   └── index.ts
 │   ├── utils/
+│   │   ├── currency.ts
+│   │   ├── logger.ts
+│   │   ├── network.ts
+│   │   ├── terminologyValidator.ts
+│   │   └── whatsapp.ts
 │   └── index.css
 ├── supabase/
 ├── .env
 ├── .env.production
 ├── .gitignore
-├── App.tsx
 ├── bitrise.yml
 ├── capacitor.config.ts
 ├── codemagic.yaml
-├── constants.test.ts
-├── env.d.ts
 ├── index.html
 ├── index.tsx
-├── package-lock.json
 ├── package.json
-├── postcss.config.js
-├── README.md
 ├── tailwind.config.js
 ├── tsconfig.json
 └── vite.config.ts

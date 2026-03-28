@@ -32,7 +32,6 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({ activeView, setActiveView,
       description: 'Kelola layanan dan paket yang ditawarkan.',
       views: [
         ViewType.PACKAGES,
-        ViewType.PROMO_CODES,
       ],
     },
     {

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { 
     Project, 
@@ -34,27 +35,24 @@ import { getProgressForStatus, generateBriefingData } from '@/features/projects/
 
 interface UseProjectActionsProps {
     projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
     clients: Client[];
     teamMembers: TeamMember[];
     teamProjectPayments: TeamProjectPayment[];
     setTeamProjectPayments: React.Dispatch<React.SetStateAction<TeamProjectPayment[]>>;
     transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
     cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
     pockets: FinancialPocket[];
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
     profile: Profile;
     showNotification: (message: string) => void;
 }
 
 export const useProjectActions = ({
-    projects, setProjects, clients, teamMembers,
+    projects, clients, teamMembers,
     teamProjectPayments, setTeamProjectPayments,
-    transactions, setTransactions, cards, setCards,
-    pockets, setPockets, profile, showNotification
+    transactions, cards,
+    pockets, profile, showNotification
 }: UseProjectActionsProps) => {
+    const queryClient = useQueryClient();
     // Modal States
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
@@ -259,7 +257,7 @@ export const useProjectActions = ({
         try {
             if (formMode === 'add') {
                 const created = await createProjectWithRelations(projectData);
-                setProjects(prev => [created, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                queryClient.invalidateQueries();
                 showNotification('Berhasil menambah Acara Pernikahan');
             } else {
                 const fieldsToUpdate = {
@@ -293,26 +291,7 @@ export const useProjectActions = ({
                     subJob: t.subJob,
                 }));
                 await upsertAssignmentsForProject(projectData.id, newTeam);
-                
-                setProjects(prev => prev.map(p => {
-                    if (p.id === projectData.id) {
-                        const updated = { 
-                            ...p, 
-                            ...fieldsToUpdate, 
-                            team: newTeam,
-                            printingDetails: projectData.printingDetails,
-                            customCosts: projectData.customCosts,
-                            totalCost: projectData.totalCost,
-                            amountPaid: projectData.amountPaid,
-                            paymentStatus: projectData.paymentStatus,
-                        };
-                        if (selectedProject?.id === projectData.id) {
-                            setSelectedProject(updated);
-                        }
-                        return updated;
-                    }
-                    return p;
-                }));
+                queryClient.invalidateQueries();
                 
                 showNotification('Berhasil memperbarui Acara Pernikahan');
             }
@@ -333,9 +312,7 @@ export const useProjectActions = ({
         if (window.confirm("Apakah Anda yakin ingin menghapus Acara Pernikahan ini? Semua data terkait akan dihapus.")) {
             try {
                 await deleteProjectInDb(projectId);
-                setProjects(prev => prev.filter(p => p.id !== projectId));
-                setTeamProjectPayments(prev => prev.filter(fp => fp.projectId !== projectId));
-                setTransactions(prev => prev.filter(t => t.projectId !== projectId));
+                queryClient.invalidateQueries();
                 showNotification('Acara Pernikahan berhasil dihapus');
             } catch (err) {
                 console.error('Delete failed:', err);
@@ -357,7 +334,7 @@ export const useProjectActions = ({
             } as any);
 
             const updated = { ...project, status: newStatus, progress: nextProgress, activeSubStatuses: [] } as Project;
-            setProjects(prev => prev.map(p => p.id === projectId ? updated : p));
+            queryClient.invalidateQueries();
             syncClientStatusFromProjects(project.clientId).catch(console.error);
             showNotification(`Status berhasil diubah ke "${newStatus}"`);
         } catch (error) {
@@ -409,19 +386,15 @@ export const useProjectActions = ({
             if (isFromPocket && sourcePocketId) {
                 const { updatePocket } = await import('@/services/pockets');
                 await updatePocket(sourcePocketId, { amount: sourcePocket!.amount - printingItem.cost });
-                setPockets(prev => prev.map(p => p.id === sourcePocketId ? { ...p, amount: p.amount - printingItem.cost } : p));
             } else if (sourceCardId) {
                 await updateCardBalance(sourceCardId, -printingItem.cost);
-                setCards(prev => prev.map(c => c.id === sourceCardId ? { ...c, balance: c.balance - printingItem.cost } : c));
             }
 
-            setTransactions(prev => [created, ...prev]);
-            
             const updatedItems = currentItems.map(item => 
                 item.id === printingItemId ? { ...item, paymentStatus: 'Paid' as const } : item
             );
             const updatedProject = await updateProjectInDb(projectId, { printingDetails: updatedItems });
-            setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+            queryClient.invalidateQueries();
             
             showNotification('Pembayaran berhasil diproses');
         } catch (err) {

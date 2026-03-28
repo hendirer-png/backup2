@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { FolderKanbanIcon, ClockIcon, CheckSquareIcon } from '@/constants';
 import StatCard from '@/shared/ui/StatCard';
 import DonutChart from '@/shared/ui/DonutChart';
-import { Project, ProjectStatusConfig, ProjectsProps } from '@/features/projects/types/project.types';
+import { Project, ProjectStatusConfig, ProjectAnalyticsProps } from '@/features/projects/types/project.types';
+
 import { formatCurrency } from '@/features/projects/utils/project.utils';
 
 // --- Project Value by Type Chart Component ---
@@ -66,12 +67,7 @@ const ProjectValueByTypeChart: React.FC<{ projects: Project[] }> = ({ projects }
 };
 
 // --- [NEW] ProjectAnalytics Component - Fokus detil pekerjaan, tanpa pembayaran ---
-const ProjectAnalytics: React.FC<{
-    projects: Project[];
-    projectStatusConfig: ProjectStatusConfig[];
-    totals: ProjectsProps['totals'];
-    onStatCardClick: (stat: 'count' | 'deadline' | 'top_type' | 'status_dist') => void;
-}> = ({ projects, projectStatusConfig, totals, onStatCardClick }) => {
+const ProjectAnalytics: React.FC<ProjectAnalyticsProps & { projects: Project[]; projectStatusConfig: ProjectStatusConfig[] }> = ({ projects, projectStatusConfig, totals, onStatCardClick }) => {
     const activeProjects = useMemo(() => projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan'), [projects]);
 
     const stats = useMemo(() => {

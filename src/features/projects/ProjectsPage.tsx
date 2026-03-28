@@ -3,6 +3,11 @@ import { ProjectsProps, Project } from '@/features/projects/types/project.types'
 import { useProjectsData } from '@/features/projects/hooks/useProjectsData';
 import { useProjectsFilters } from '@/features/projects/hooks/useProjectsFilters';
 import { useProjectActions } from '@/features/projects/hooks/useProjectActions';
+
+// React Query Hooks
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useTransactions, useCards, usePockets } from '@/features/finance/api/useFinanceQueries';
 // import { useProjectChecklist } from '@/features/projects/hooks/useProjectChecklist'; // Keep if needed for later
 import ProjectHeader from '@/features/projects/components/ProjectHeader';
 import ProjectFilters from '@/features/projects/components/ProjectFilters';
@@ -19,16 +24,27 @@ import QuickStatusModal from '@/features/projects/components/QuickStatusModal';
 import { getStatModalData } from '@/features/projects/utils/project.utils';
 
 const ProjectsPage: React.FC<ProjectsProps> = ({
-    initialAction, setInitialAction, profile, showNotification,
-    clients, packages, teamMembers, teamProjectPayments, transactions, 
-    cards, pockets, setTeamProjectPayments, setTransactions, 
-    setCards, setPockets, projects: initialProjects
+    profile, showNotification,
+    packages, teamMembers, teamProjectPayments, setTeamProjectPayments
 }) => {
+
+    // 1. Decoupled Data Fetching
+    const { data: qProjects } = useProjects({ limit: 50 });
+    const { data: qClients } = useClients({ limit: 50 });
+    const { data: qTransactions } = useTransactions({ limit: 50 });
+    const { data: qCards } = useCards();
+    const { data: qPockets } = usePockets();
+
+    const initialProjects = qProjects || [];
+    const clients = qClients || [];
+    const transactions = qTransactions || [];
+    const cards = qCards || [];
+    const pockets = qPockets || [];
     // 1. Data & State Management
     const {
         projects, setProjects, isLoading, isLoadingMore, hasMore, loadMoreProjects, totals
     } = useProjectsData({
-        initialProjects, clients, teamMembers, transactions, showNotification
+        teamMembers, showNotification
     });
 
     // 2. Filtering & View Logic
@@ -45,17 +61,13 @@ const ProjectsPage: React.FC<ProjectsProps> = ({
     // 3. Mutation & Action Handlers
     const actions = useProjectActions({
         projects,
-        setProjects,
         clients,
         teamMembers,
         teamProjectPayments,
         setTeamProjectPayments,
         transactions,
-        setTransactions,
         cards,
-        setCards,
         pockets,
-        setPockets,
         profile,
         showNotification
     });

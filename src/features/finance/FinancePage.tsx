@@ -3,12 +3,16 @@ import {
     FileTextIcon, ClipboardListIcon, CreditCardIcon, 
     TrendingUpIcon, BarChart2Icon, DollarSignIcon 
 } from 'lucide-react';
-import { FinanceProps, FinanceTab } from '@/features/finance/types/finance.types';
+import { FinanceTab } from '@/features/finance/types/finance.types';
 import { useFinanceData } from '@/features/finance/hooks/useFinanceData';
 import { useFinanceFilters } from '@/features/finance/hooks/useFinanceFilters';
 import { useFinanceActions } from '@/features/finance/hooks/useFinanceActions';
 import { useFinanceAnalytics } from '@/features/finance/hooks/useFinanceAnalytics';
 import { downloadCSV, getMonthDateRange } from '@/features/finance/utils/finance.utils';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+import { useTeamMembers } from '@/features/team/api/useTeamQueries';
+
 
 // Components
 import { FinanceHeader } from '@/features/finance/components/FinanceHeader';
@@ -23,11 +27,19 @@ import { ProfitabilityReportView } from '@/features/finance/components/Profitabi
 import { FinanceModals } from '@/features/finance/components/FinanceModals';
 import Modal from '@/shared/ui/Modal';
 
-export const FinancePage: React.FC<FinanceProps> = (props) => {
-    const { 
-        transactions, setTransactions, pockets, setPockets, 
-        projects, setProjects, profile, cards, setCards 
-    } = props;
+export const FinancePage: React.FC = () => {
+    // Fetch local data (replaces god context props)
+    const { data: profileData } = useProfile();
+    const { data: teamMembersData } = useTeamMembers();
+    const { data: projectsData } = useProjects({ limit: 100 });
+
+    const profile = profileData || ({
+        incomeCategories: [],
+        expenseCategories: [],
+        projectStatusConfig: [],
+    } as any);
+    const teamMembers = teamMembersData || [];
+    const projects = projectsData || [];
 
     // State
     const [activeTab, setActiveTab] = useState<FinanceTab>('transactions');
@@ -37,12 +49,12 @@ export const FinancePage: React.FC<FinanceProps> = (props) => {
     const [profitReportFilters, setProfitReportFilters] = useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
 
     // Hooks
-    const { summary, hasMore, isLoadingMore, loadMoreTransactions } = useFinanceData({ transactions, setTransactions, pockets, cards });
+    const { transactions, pockets, cards, summary, hasMore, isLoadingMore, loadMoreTransactions } = useFinanceData();
     const { 
         filters, handleFilterChange, categoryFilter, setCategoryFilter, 
         filteredTransactions, categoryTotals, filteredSummary 
     } = useFinanceFilters({ transactions });
-    const actions = useFinanceActions({ setTransactions, setPockets, setCards, setProjects, profile });
+    const actions = useFinanceActions({ profile });
     const analytics = useFinanceAnalytics({ 
         transactions, pockets, cards, projects, profile, 
         filteredTransactions, reportFilters, profitReportFilters 

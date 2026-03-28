@@ -34,29 +34,8 @@ export interface ConvertLeadFormData {
 }
 
 export interface LeadsPageProps {
-    leads: Lead[];
-    setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-    clients: Client[];
-    setClients: React.Dispatch<React.SetStateAction<Client[]>>;
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    packages: Package[];
-    addOns: AddOn[];
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    userProfile: Profile;
-    setProfile: React.Dispatch<React.SetStateAction<Profile>>;
-    showNotification: (message: string) => void;
-    handleNavigation: (view: ViewType, action?: NavigationAction) => void;
-    cards: Card[];
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    pockets: FinancialPocket[];
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
-    promoCodes: PromoCode[];
-    setPromoCodes: React.Dispatch<React.SetStateAction<PromoCode[]>>;
-    totals: {
-        projects: number; activeProjects: number; clients: number; activeClients: number;
-        leads: number; discussionLeads: number; followUpLeads: number; teamMembers: number;
-        transactions: number; revenue: number; expense: number;
-    };
+    showNotification?: (message: string) => void;
+    handleNavigation?: (view: ViewType, action?: NavigationAction) => void;
 }
+
+

@@ -1,6 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { REGIONS } from '@/types';
-import { Client, Project, Package, AddOn, Transaction, Profile, Card, FinancialPocket, ClientStatus, PaymentStatus, TransactionType, PromoCode, Lead, LeadStatus, ContactChannel, ClientType, PublicBookingFormProps, BookingStatus, ViewType } from '@/types';
+import { REGIONS, Package, AddOn, Profile, Client, Project, Transaction, Card, FinancialPocket, PromoCode, Lead, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType } from '@/types';
+import { useApp } from "@/app/AppContext";
+import { listPackages } from '@/services/packages';
+import { listAddOns } from '@/services/addOns';
+import { listCards } from '@/services/cards';
+import { listPockets } from '@/services/pockets';
+import { listPromoCodes } from '@/services/promoCodes';
+import { listLeads } from '@/services/leads';
+
 import Modal from '@/shared/ui/Modal';
 import { MessageSquareIcon } from '@/constants';
 import { createClient } from '@/services/clients';
@@ -50,9 +57,53 @@ const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) 
 });
 
 
-const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
-    setClients, setProjects, packages, addOns, setTransactions, userProfile, cards, setCards, pockets, setPockets, promoCodes, setPromoCodes, showNotification, leads, setLeads, addNotification
-}) => {
+interface PublicBookingProps {
+    userProfile?: Profile;
+    showNotification?: (message: string) => void;
+}
+
+const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
+    const { showNotification: contextShowNotification } = useApp();
+    const showNotification = props.showNotification || contextShowNotification;
+
+    // Independent state for public form
+    const [packages, setPackages] = useState<Package[]>([]);
+    const [addOns, setAddOns] = useState<AddOn[]>([]);
+    const [userProfile, setUserProfile] = useState<Profile | undefined>(props.userProfile);
+    const [cards, setCards] = useState<Card[]>([]);
+    const [pockets, setPockets] = useState<FinancialPocket[]>([]);
+    const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+    // Fetch data independently
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [pkgs, ads, crds, pks, promos, lds] = await Promise.all([
+                    listPackages(),
+                    listAddOns(),
+                    listCards(),
+                    listPockets(),
+                    listPromoCodes(),
+                    listLeads()
+                ]);
+                setPackages(pkgs);
+                setAddOns(ads);
+                setCards(crds as any);
+
+                setPockets(pks);
+                setPromoCodes(promos || []);
+                setLeads(lds);
+            } catch (err) {
+                console.error('Error loading public booking data:', err);
+            } finally {
+                setIsInitialLoading(false);
+            }
+        };
+        loadData();
+    }, []);
+
     const [formData, setFormData] = useState({ ...initialFormState, projectType: userProfile.projectTypes[0] || '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -404,44 +455,20 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                 addOns: selectedAddOns.map(a => ({ id: a.id, name: a.name, price: a.price })),
             });
 
-            if (leadId) {
-                try {
-                    const leadNote = `Dikonversi dari formulir booking. Pengantin ID: ${createdClient.id}`;
-                    const updatedLead = await updateLeadRow(leadId, { status: LeadStatus.CONVERTED, notes: leadNote });
-                    setLeads(prev => prev.map(l => l.id === leadId ? updatedLead : l));
-                } catch (error) {
-                    console.error('[Lead] Failed to update lead status:', error);
-                }
-            } else {
-                try {
-                    const createdLead = await createLeadRow({
-                        name: createdClient.name,
-                        contactChannel: ContactChannel.WEBSITE,
-                        location: createdProject.location,
-                        status: LeadStatus.CONVERTED,
-                        date: new Date().toISOString(),
-                        notes: `Dikonversi otomatis dari booking publik. Acara Pernikahan: ${createdProject.projectName}. Pengantin ID: ${createdClient.id}`,
-                        whatsapp: createdClient.phone,
-                    } as any);
-                    setLeads(prev => [createdLead, ...prev]);
-                } catch (error) {
-                    console.error('[Lead] Failed to create lead:', error);
-                }
-            }
-
-            setClients(prev => [createdClient, ...prev]);
-            // Tandai sebagai booking baru agar muncul di halaman Booking
-            const createdProjectWithBooking: Project = { ...createdProject, bookingStatus: BookingStatus.BARU } as Project;
-            setProjects(prev => [createdProjectWithBooking, ...prev]);
-
-            if (promoCodeAppliedId) {
-                setPromoCodes(prev => prev.map(p => p.id === promoCodeAppliedId ? { ...p, usageCount: p.usageCount + 1 } : p));
-            }
+            await createLeadRow({
+                name: createdClient.name,
+                contactChannel: ContactChannel.WEBSITE,
+                location: createdProject.location,
+                status: LeadStatus.CONVERTED,
+                date: new Date().toISOString(),
+                notes: `Dikonversi otomatis dari booking publik. Acara Pernikahan: ${createdProject.projectName}. Pengantin ID: ${createdClient.id}`,
+                whatsapp: createdClient.phone,
+            } as any);
 
             if (dpAmount > 0) {
                 const today = new Date().toISOString().split('T')[0];
                 try {
-                    const createdTx = await createTransaction({
+                    await createTransaction({
                         date: today,
                         description: `DP Acara Pernikahan ${createdProject.projectName}`,
                         amount: dpAmount,
@@ -451,44 +478,31 @@ const PublicBookingForm: React.FC<PublicBookingFormProps> = ({
                         method: 'Transfer Bank',
                         cardId: destinationCard.id,
                     } as any);
-                    setTransactions(prev => [createdTx, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-                    setCards(prev => prev.map(c => c.id === destinationCard.id ? { ...c, balance: c.balance + dpAmount } : c));
                 } catch (err) {
                     console.error('Gagal mencatat transaksi DP ke Supabase:', err);
-                    // Tetap update lokal agar UI tidak macet
-                    const localTx: Transaction = {
-                        id: `TRN-DP-${createdProject.id}`,
-                        date: today,
-                        description: `DP Acara Pernikahan ${createdProject.projectName}`,
-                        amount: dpAmount,
-                        type: TransactionType.INCOME,
-                        projectId: createdProject.id,
-                        category: 'DP Acara Pernikahan',
-                        method: 'Transfer Bank',
-                        cardId: destinationCard.id,
-                    };
-                    setTransactions(prev => [localTx, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-                    setCards(prev => prev.map(c => c.id === destinationCard.id ? { ...c, balance: c.balance + dpAmount } : c));
                 }
             }
 
-            setIsSubmitting(false);
             setIsSubmitted(true);
-
-            addNotification({
-                title: 'Booking Baru Diterima!',
-                message: `Booking dari ${createdClient.name} untuk Acara Pernikahan "${createdProjectWithBooking.projectName}" menunggu konfirmasi Anda.`,
-                icon: 'lead',
-                link: { view: ViewType.BOOKING }
-            });
         } catch (err: any) {
             console.error('Error submitting public booking form:', err);
             showNotification && showNotification(typeof err === 'string' ? err : (err?.message || 'Terjadi kesalahan saat mengirim formulir. Silakan coba lagi.'));
+        } finally {
             setIsSubmitting(false);
         }
     };
 
+
+    if (isInitialLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
     if (isSubmitted) {
+
         return (
             <div className="flex items-center justify-center min-h-screen p-3 md:p-4">
                 <div className="w-full max-w-2xl p-6 md:p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-public-border">

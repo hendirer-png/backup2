@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { useOfflineSync } from '@/shared/hooks/useOfflineSync';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
+
 import { AlertCircleIcon } from '@/constants';
 import FailedSyncModal from '@/shared/ui/FailedSyncModal';
 

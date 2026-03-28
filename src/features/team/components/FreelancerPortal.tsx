@@ -1,16 +1,14 @@
-import React from 'react';
-import { FreelancerPortalProps } from '@/types';
+interface PortalProps {
+    accessId: string;
+    showNotification?: (message: string, duration?: number) => void;
+}
 
-export const FreelancerPortal: React.FC<FreelancerPortalProps> = ({ 
+
+export const FreelancerPortal: React.FC<PortalProps> = ({ 
     accessId, 
-    teamMembers, 
-    projects, 
-    teamProjectPayments, 
-    teamPaymentRecords,
-    showNotification,
-    userProfile,
-    addNotification
+    showNotification
 }) => {
+
     return (
         <div className="p-8 text-center">
             <h1 className="text-2xl font-bold mb-4">Freelancer Portal</h1>

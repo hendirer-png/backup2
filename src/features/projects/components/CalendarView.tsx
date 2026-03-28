@@ -880,16 +880,53 @@ const EventPanel: React.FC<EventPanelProps> = ({ isOpen, mode, selectedEvent, ev
 
 
 // --- MAIN COMPONENT ---
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useTeamMembers } from '@/features/team/api/useTeamQueries';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+import { useQueryClient } from '@tanstack/react-query';
+
+
+import { useUIStore } from '@/store/uiStore';
+
 interface CalendarViewProps {
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    teamMembers: TeamMember[];
-    profile: Profile;
-    clients: Client[];
-    handleNavigation: (view: ViewType, action?: NavigationAction) => void;
+    handleNavigation?: (view: ViewType, action?: NavigationAction) => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ projects, setProjects, teamMembers, profile, clients, handleNavigation }) => {
+
+export const CalendarView: React.FC<CalendarViewProps> = (props) => {
+    const { setActiveView } = useUIStore();
+    
+    // Fallback handleNavigation if not provided
+    const handleNavigation = props.handleNavigation || ((view: ViewType) => {
+        setActiveView(view);
+    });
+
+    const { data: qProfile, isLoading: isProfileLoading } = useProfile();
+
+    // Data Fetching
+    const queryClient = useQueryClient();
+    const { data: qProjects } = useProjects();
+    const projects = qProjects || [];
+    const { data: qClients } = useClients();
+    const clients = qClients || [];
+    const { data: teamMembers = [] } = useTeamMembers();
+
+    const profile = qProfile || ({} as Profile);
+
+
+    const setProjects = (updater: React.SetStateAction<Project[]>) => {
+        const current = queryClient.getQueryData<Project[]>(['projects']) || [];
+        const next = typeof updater === 'function' ? updater(current) : updater;
+        queryClient.setQueryData(['projects'], next);
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+    };
+
+    if (isProfileLoading || !qProfile) {
+        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Kalender...</div>;
+    }
+
+
     // STATE
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'Day' | 'Week' | 'Month' | 'Team' | 'Agenda'>('Month');

@@ -583,6 +583,8 @@ export interface Profile {
   checklistTemplates?: ChecklistTemplate[];
   contractTemplate?: string;
   signature?: string;
+  role?: 'Admin' | 'Member' | 'Kasir';
+  permissions?: ViewType[];
 }
 
 export interface TeamProjectPayment {

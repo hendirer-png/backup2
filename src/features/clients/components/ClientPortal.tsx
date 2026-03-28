@@ -57,38 +57,100 @@ const getDisplayProgressForProject = (project: Project, config: ProjectStatusCon
 };
 
 
-const ClientPortal: React.FC<ClientPortalProps> = ({ accessId, clients, projects, transactions, setClientFeedback, showNotification, userProfile, packages, teamMembers }) => {
-    const profile = userProfile;
-    const client = useMemo(() => clients.find(c => c.portalAccessId === accessId), [clients, accessId]);
-    const isVendorClient = client?.clientType === 'Vendor';
+import { listClients, normalizeClient } from '@/services/clients';
+import { listProjects } from '@/services/projects';
+import { listTransactions } from '@/services/transactions';
+import { getProfile } from '@/services/profile';
+import { listPackages } from '@/services/packages';
+import { listTeamMembers } from '@/services/teamMembers';
 
-    const clientProjects = useMemo(() => projects.filter(p => p.clientId === client?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [projects, client]);
+interface PortalProps {
+    accessId: string;
+    showNotification?: (message: string, duration?: number) => void;
+}
+
+
+const ClientPortal: React.FC<PortalProps> = ({ accessId, showNotification }) => {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [client, setClient] = useState<Client | null>(null);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [packages, setPackages] = useState<Package[]>([]);
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [viewingDocument, setViewingDocument] = useState<{ type: 'invoice' | 'receipt', project: Project, data: any } | null>(null);
+
+    useEffect(() => {
+        const loadPortalData = async () => {
+            setLoading(true);
+            try {
+                // 1. Fetch all clients to find the one with accessId
+                // In a real app, we'd have a specific "getByAccessId" endpoint for security
+                const allClients = await listClients({ limit: 1000 });
+                const foundClient = allClients.find(c => c.portalAccessId === accessId);
+                
+                if (!foundClient) {
+                    setError('Portal tidak ditemukan');
+                    setLoading(false);
+                    return;
+                }
+                setClient(foundClient);
+
+                // 2. Fetch other related data in parallel
+                const [projs, trans, prof, pkgs, tm] = await Promise.all([
+                    listProjects(),
+                    listTransactions(),
+                    getProfile(),
+                    listPackages(),
+                    listTeamMembers()
+                ]);
+
+                setProjects(projs.filter(p => p.clientId === foundClient.id));
+                setTransactions(trans.filter(t => projs.some(p => p.id === t.projectId && p.clientId === foundClient.id)));
+                setProfile(prof);
+                setPackages(pkgs);
+                setTeamMembers(tm);
+            } catch (err) {
+                console.error('Error loading portal data:', err);
+                setError('Gagal memuat data portal');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadPortalData();
+    }, [accessId]);
+
+    const isVendorClient = client?.clientType === 'Vendor';
+    const clientProjects = useMemo(() => [...projects].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [projects]);
     const template = profile?.publicPageConfig?.template ?? 'classic';
 
-    if (!client) {
-        // While clients data may still be loading (e.g., right after reload), avoid flashing a false error
-        if (!clients || clients.length === 0) {
-            return (
-                <div className="flex items-center justify-center min-h-screen p-4 bg-public-bg">
-                    <div className="flex flex-col items-center justify-center">
-                        <div className="relative flex justify-center items-center mb-6">
-                            <div className="absolute border-4 border-brand-accent/20 rounded-full w-16 h-16"></div>
-                            <div className="animate-spin border-4 border-transparent border-t-brand-accent rounded-full w-16 h-16"></div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+    if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen p-4 bg-public-bg">
-                <div className="w-full max-w-lg p-8 text-center bg-public-surface rounded-2xl shadow-lg">
-                    <h1 className="text-2xl font-bold text-red-500">Portal Tidak Ditemukan</h1>
-                    <p className="mt-4 text-public-text-primary">Tautan yang Anda gunakan tidak valid atau sudah tidak berlaku.</p>
+                <div className="flex flex-col items-center justify-center">
+                    <div className="relative flex justify-center items-center mb-6">
+                        <div className="absolute border-4 border-brand-accent/20 rounded-full w-16 h-16"></div>
+                        <div className="animate-spin border-4 border-transparent border-t-brand-accent rounded-full w-16 h-16"></div>
+                    </div>
                 </div>
             </div>
         );
     }
+
+    if (error || !client || !profile) {
+        return (
+            <div className="flex items-center justify-center min-h-screen p-4 bg-public-bg">
+                <div className="w-full max-w-lg p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-red-100">
+                    <h1 className="text-2xl font-bold text-red-500">{error || 'Portal Tidak Ditemukan'}</h1>
+                    <p className="mt-4 text-public-text-primary">Tautan yang Anda gunakan tidak valid atau sudah tidak berlaku.</p>
+                    <a href="/" className="mt-6 inline-block text-blue-600 font-bold hover:underline">Kembali ke Beranda</a>
+                </div>
+            </div>
+        );
+    }
+
 
     const renderAllSections = () => {
         return (
@@ -130,7 +192,8 @@ const ClientPortal: React.FC<ClientPortalProps> = ({ accessId, clients, projects
                         <div className="h-10 w-1 bg-yellow-500 rounded-full"></div>
                         <h2 className="text-3xl font-black text-slate-800 tracking-tight">Testimoni Pengantin</h2>
                     </div>
-                    <FeedbackTab client={client} setClientFeedback={setClientFeedback} showNotification={showNotification} />
+                    <FeedbackTab client={client} />
+
                 </section>
             </div>
         );
@@ -995,7 +1058,8 @@ const FinanceTab: React.FC<{ projects: Project[], transactions: Transaction[], p
     );
 };
 
-const FeedbackTab: React.FC<{ client: Client, setClientFeedback: any, showNotification: any }> = ({ client, setClientFeedback, showNotification }) => {
+const FeedbackTab: React.FC<{ client: Client }> = ({ client }) => {
+
     const [rating, setRating] = useState(0);
     const [feedbackText, setFeedbackText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1012,14 +1076,15 @@ const FeedbackTab: React.FC<{ client: Client, setClientFeedback: any, showNotifi
                 feedback: feedbackText,
                 date: new Date().toISOString(),
             } as Omit<ClientFeedback, 'id'>;
-            const created = await createClientFeedback(payload);
-            setClientFeedback((prev: ClientFeedback[]) => [created, ...prev]);
-            showNotification('Terima kasih! Masukan Anda telah tersimpan.');
+            await createClientFeedback(payload);
+            alert('Terima kasih! Masukan Anda telah tersimpan.');
+
             setRating(0);
             setFeedbackText('');
         } catch (err) {
             console.error('[ClientPortal] Failed to create client feedback:', err);
-            showNotification('Gagal menyimpan masukan. Coba lagi.');
+            alert('Gagal menyimpan masukan. Coba lagi.');
+
         } finally {
             setIsSubmitting(false);
         }

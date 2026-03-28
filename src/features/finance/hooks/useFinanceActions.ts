@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-    Transaction, FinancialPocket, Card, Project, Profile, 
-    TransactionType, PocketType, CardType 
+import {
+    Transaction, FinancialPocket, Card, Project, Profile,
+    TransactionType, PocketType, CardType
 } from '@/types';
 import * as transactionService from '@/services/transactions';
 import * as pocketService from '@/services/pockets';
@@ -9,24 +9,16 @@ import * as cardService from '@/services/cards';
 import * as projectService from '@/services/projects';
 
 interface UseFinanceActionsProps {
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>>;
-    setCards: React.Dispatch<React.SetStateAction<Card[]>>;
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
     profile: Profile;
 }
 
 export const useFinanceActions = ({
-    setTransactions,
-    setPockets,
-    setCards,
-    setProjects,
     profile
 }: UseFinanceActionsProps) => {
     const [modalState, setModalState] = useState<{ type: string | null; mode: 'add' | 'edit'; data?: any }>({ type: null, mode: 'add' });
     const [form, setForm] = useState<any>({});
 
-    const toast = { 
+    const toast = {
         success: (msg: string) => console.log('Success:', msg),
         error: (msg: string) => console.error('Error:', msg)
     };
@@ -36,12 +28,27 @@ export const useFinanceActions = ({
         if (mode === 'edit' && data) {
             setForm({ ...data });
         } else {
-            const initialForm: any = { date: new Date().toISOString().split('T')[0], type: TransactionType.EXPENSE };
+            const initialForm: any = {
+                date: new Date().toISOString().split('T')[0],
+                type: TransactionType.EXPENSE,
+                method: 'Transfer Bank',
+                description: '',
+                amount: '0',
+                category: '',
+                projectId: '',
+                sourceId: '',
+                cardId: ''
+            };
             if (type === 'card') {
                 initialForm.cardType = CardType.DEBIT;
+                initialForm.bankName = '';
+                initialForm.cardHolderName = '';
+                initialForm.lastFourDigits = '';
             } else if (type === 'pocket') {
                 initialForm.type = PocketType.SAVING;
                 initialForm.icon = 'Wallet';
+                initialForm.name = '';
+                initialForm.description = '';
             } else if (type === 'topup-cash') {
                 initialForm.type = 'topup-cash';
             } else if (type === 'transfer') {
@@ -67,37 +74,53 @@ export const useFinanceActions = ({
 
         try {
             if (type === 'transaction') {
+                const isExpense = form.type === TransactionType.EXPENSE;
+                let cardId = form.cardId || null;
+                let pocketId = form.pocketId || null;
+
+                if (isExpense && form.sourceId) {
+                    if (form.sourceId.startsWith('card-')) cardId = form.sourceId.replace('card-', '');
+                    else if (form.sourceId.startsWith('pocket-')) pocketId = form.sourceId.replace('pocket-', '');
+                }
+
+                const payload = {
+                    ...form,
+                    amount: Number(form.amount || 0),
+                    cardId: cardId || null,
+                    pocketId: pocketId || null,
+                    projectId: form.projectId || null,
+                    method: form.method || 'Transfer Bank'
+                };
+                delete (payload as any).sourceId;
+
                 if (mode === 'add') {
-                    await transactionService.createTransaction({
-                        ...form,
-                        amount: Number(form.amount),
-                        sourceId: form.sourceId,
-                        cardId: form.cardId
-                    });
+                    await transactionService.createTransaction(payload);
                     toast.success('Transaksi berhasil disimpan');
                 } else {
-                    await transactionService.updateTransaction(originalData.id, {
-                        ...form,
-                        amount: Number(form.amount)
-                    });
+                    await transactionService.updateTransaction(originalData.id, payload);
                     toast.success('Transaksi berhasil diperbarui');
                 }
             } else if (type === 'pocket') {
+                const payload = {
+                    ...form,
+                    amount: Number(form.amount || 0),
+                    sourceCardId: form.sourceCardId || null
+                };
                 if (mode === 'add') {
-                    await pocketService.createPocket({ ...form, amount: 0 });
+                    await pocketService.createPocket({ ...payload, amount: 0 });
                     toast.success('Kantong berhasil dibuat');
                 } else {
-                    await pocketService.updatePocket(originalData.id, form);
+                    await pocketService.updatePocket(originalData.id, payload);
                     toast.success('Kantong berhasil diperbarui');
                 }
             } else if (type === 'card') {
                 if (mode === 'add') {
-                    await cardService.createCard({ 
+                    await cardService.createCard({
                         card_holder_name: form.cardHolderName,
-                        bank_name: form.bankName,
+                        bank_name: form.bankName || null,
                         card_type: form.cardType,
                         last_four_digits: form.lastFourDigits,
-                        initialBalance: Number(form.initialBalance) || 0 
+                        initialBalance: Number(form.initialBalance) || 0
                     } as any);
                     toast.success('Kartu/Akun berhasil ditambah');
                 } else {
@@ -107,11 +130,11 @@ export const useFinanceActions = ({
             } else if (type === 'transfer' || type === 'topup-cash') {
                 const isTopup = type === 'topup-cash';
                 await transactionService.transferFunds({
-                    fromCardId: form.fromCardId,
+                    fromCardId: form.fromCardId || undefined,
                     toPocketId: !isTopup && form.type === 'deposit' ? originalData.id : undefined,
                     fromPocketId: !isTopup && form.type === 'withdraw' ? originalData.id : undefined,
                     isCashTopup: isTopup,
-                    amount: Number(form.amount)
+                    amount: Number(form.amount || 0)
                 });
                 toast.success(isTopup ? 'Top-up tunai berhasil' : 'Transfer berhasil');
             }

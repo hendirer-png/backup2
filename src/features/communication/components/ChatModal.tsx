@@ -15,8 +15,8 @@ interface ChatModalProps {
     userProfile?: Profile;
 }
 
-const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, project, client, onSendMessage, userProfile }) => {
-    const { templates, processTemplate: processTemplateFunc } = useChatTemplates(userProfile);
+const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, project, client, onSendMessage }) => {
+    const { templates, processTemplate: processTemplateFunc } = useChatTemplates();
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 

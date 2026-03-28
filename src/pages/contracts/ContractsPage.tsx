@@ -18,11 +18,10 @@ interface ContractsProps {
     projects: Project[];
     profile: Profile;
     showNotification: (message: string) => void;
-    initialAction: NavigationAction | null;
-    setInitialAction: (action: NavigationAction | null) => void;
     packages: Package[];
     onSignContract: (contractId: string, signatureDataUrl: string, signer: 'vendor' | 'client') => void;
 }
+
 
 const Contracts: React.FC<ContractsProps> = ({ 
     contracts, 
@@ -31,11 +30,10 @@ const Contracts: React.FC<ContractsProps> = ({
     projects, 
     profile, 
     showNotification, 
-    initialAction, 
-    setInitialAction, 
     packages, 
     onSignContract 
 }) => {
+
     const {
         isFormModalOpen,
         isViewModalOpen,
@@ -67,10 +65,9 @@ const Contracts: React.FC<ContractsProps> = ({
         profile,
         packages,
         showNotification,
-        initialAction,
-        setInitialAction,
         onSignContract
     });
+
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

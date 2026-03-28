@@ -11,10 +11,85 @@ import { LeadFilterBar } from '@/features/leads/components/LeadFilterBar';
 import { LeadKanban } from '@/features/leads/components/LeadKanban';
 import { ShareMessageModal } from '@/features/leads/components/ShareMessageModal';
 
+import { useQueryClient } from '@tanstack/react-query';
+import { useLeads } from '@/features/leads/api/useLeadsQueries';
+import { useClients } from '@/features/clients/api/useClients';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useTransactions, useCards, usePockets } from '@/features/finance/api/useFinanceQueries';
+import { Lead, Client, Project, Transaction, Card, FinancialPocket, LeadStatus, TransactionType, ViewType, NavigationAction } from '@/types';
+import { usePackages, useAddOns } from '@/features/packages/api/usePackagesQueries';
+import { usePromoCodes } from '@/features/promo/api/usePromoQueries';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+import { useUIStore } from '@/store/uiStore';
+import { useApp } from "@/app/AppContext";
+
+
 export const LeadsPage: React.FC<LeadsPageProps> = (props) => {
-    const {
-        leads, packages, addOns, userProfile, setProfile, cards, promoCodes, showNotification, totals,
-    } = props;
+    const { 
+        showNotification: contextShowNotification,
+    } = useApp();
+    const { setActiveView } = useUIStore();
+
+    const showNotification = props.showNotification || contextShowNotification;
+    const handleNavigation = props.handleNavigation || ((view: ViewType) => {
+        setActiveView(view);
+        const pathMap: any = {
+            [ViewType.HOMEPAGE]: "home",
+            [ViewType.DASHBOARD]: "dashboard",
+        };
+        const newPath = pathMap[view] || view.toLowerCase().replace(/ /g, "-");
+        window.location.hash = `#/${newPath}`;
+    });
+
+
+    const queryClient = useQueryClient();
+    const { data: leads = [] } = useLeads();
+    const { data: clients = [] } = useClients();
+    const { data: projects = [] } = useProjects();
+    const { data: transactions = [] } = useTransactions({});
+    const { data: cards = [] } = useCards();
+    const { data: pockets = [] } = usePockets();
+    const { data: packages = [] } = usePackages();
+    const { data: addOns = [] } = useAddOns();
+    const { data: promoCodes = [] } = usePromoCodes();
+    const { data: userProfileData } = useProfile();
+
+    const userProfile = userProfileData || ({
+        projectTypes: [],
+        projectStatusConfig: [],
+        eventTypes: [],
+    } as any);
+
+    const totals = React.useMemo(() => ({
+        projects: projects.length,
+        activeProjects: projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').length,
+        clients: clients.length,
+        activeClients: clients.length, // Placeholder logic
+        leads: leads.length,
+        discussionLeads: leads.filter(l => l.status === LeadStatus.DISCUSSION).length,
+        followUpLeads: leads.filter(l => l.status === LeadStatus.FOLLOW_UP).length,
+        teamMembers: 0, // Placeholder
+        transactions: transactions.length,
+        revenue: transactions.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0),
+        expense: transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0),
+    }), [projects, clients, leads, transactions]);
+
+    // Mock setters to trigger React Query invalidation for deep logic
+    const setQueryAndInvalidate = (key: any[], updater: any) => {
+        queryClient.setQueryData(key, (old: any) => {
+            return typeof updater === 'function' ? updater(old) : updater;
+        });
+        queryClient.invalidateQueries({ queryKey: key });
+    };
+
+    const setLeads: React.Dispatch<React.SetStateAction<Lead[]>> = (u) => setQueryAndInvalidate(['leads', {}], u);
+    const setClients: React.Dispatch<React.SetStateAction<Client[]>> = (u) => setQueryAndInvalidate(['clients', {}], u);
+    const setProjects: React.Dispatch<React.SetStateAction<Project[]>> = (u) => setQueryAndInvalidate(['projects', {}], u);
+    const setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>> = (u) => setQueryAndInvalidate(['transactions', {}], u);
+    const setCards: React.Dispatch<React.SetStateAction<Card[]>> = (u) => setQueryAndInvalidate(['cards', {}], u);
+    const setPockets: React.Dispatch<React.SetStateAction<FinancialPocket[]>> = (u) => setQueryAndInvalidate(['pockets', {}], u);
+    const setPromoCodes: React.Dispatch<React.SetStateAction<any[]>> = (u) => setQueryAndInvalidate(['promoCodes'], u);
+    const setProfile: React.Dispatch<React.SetStateAction<any>> = (u) => setQueryAndInvalidate(['profile'], u);
 
     const {
         isModalOpen, modalMode, formData, setFormData,
@@ -32,7 +107,12 @@ export const LeadsPage: React.FC<LeadsPageProps> = (props) => {
         handleStatCardClick,
         handleDragStart, handleDragOver, handleDrop,
         handleNextStatus, handleDeleteLead,
-    } = useLeadsPage({ ...props });
+    } = useLeadsPage({ 
+        ...props,
+        leads, setLeads, clients, setClients, projects, setProjects,
+        transactions, setTransactions, cards, setCards, pockets, setPockets,
+        packages, addOns, promoCodes, setPromoCodes, userProfile, setProfile, totals
+    });
 
     const isEmpty = leads.length === 0;
 
@@ -93,7 +173,7 @@ export const LeadsPage: React.FC<LeadsPageProps> = (props) => {
                         onOpenShareModal={() => setIsShareModalOpen(true)}
                         onAddLead={() => handleOpenModal('add')}
                         showNotification={showNotification}
-                        setLeads={props.setLeads}
+                        setLeads={setLeads}
                     />
                 </>
             )}

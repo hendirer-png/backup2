@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Client, Project, Transaction, PaymentStatus, ClientStatus } from '@/types';
 import { ExtendedClient, ClientStats } from '@/features/clients/types';
 import { formatCurrency } from '@/features/clients/utils/clients.utils';
+import { useClients } from '@/features/clients/api/useClients';
 
 interface UseClientsDataProps {
     clients: Client[];
@@ -10,7 +11,11 @@ interface UseClientsDataProps {
     totals: any;
 }
 
-export function useClientsData({ clients, projects, transactions, totals }: UseClientsDataProps) {
+export function useClientsData({ clients: initialClients, projects, transactions, totals }: UseClientsDataProps) {
+    // 1. Fetch data from React Query instead of relying solely on props!
+    const { data: queryClients, isLoading: isClientsLoading } = useClients({ limit: 100 });
+    const clients = queryClients || initialClients;
+
     const allClientData = useMemo(() => {
         return clients.map(client => {
             const clientProjects = projects.filter(p => p.clientId === client.id)
@@ -104,6 +109,7 @@ export function useClientsData({ clients, projects, transactions, totals }: UseC
         clientsWithDues,
         clientStats,
         clientStatusDonutData,
-        newClientsChartData
+        newClientsChartData,
+        isClientsLoading
     };
 }

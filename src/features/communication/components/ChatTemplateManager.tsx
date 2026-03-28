@@ -38,7 +38,7 @@ export const ChatTemplateManager: React.FC<ChatTemplateManagerProps> = ({
     deleteTemplate,
     resetToDefaults,
     validateTemplate,
-  } = useChatTemplates(userProfile);
+  } = useChatTemplates();
 
   const [editingTemplate, setEditingTemplate] = useState<ChatTemplate | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);

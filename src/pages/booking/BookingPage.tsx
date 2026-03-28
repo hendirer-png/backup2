@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+
 import { Lead, Client, Project, Package, ViewType, NavigationAction, Profile, BookingStatus } from '@/types';
 import PageHeader from '@/layouts/PageHeader';
 import Modal from '@/shared/ui/Modal';
@@ -13,23 +14,58 @@ import WhatsappTemplateModal from '@/features/booking/components/WhatsappTemplat
 // Feature Hooks & Utils
 import { useBookingPage } from '@/features/booking/hooks/useBookingPage';
 
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useLeads } from '@/features/leads/api/useLeadsQueries';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { listPackages } from '@/services/packages';
+
+import { useApp } from "@/app/AppContext";
+import { useUIStore } from '@/store/uiStore';
+
 interface BookingProps {
-    leads: Lead[];
-    clients: Client[];
-    projects: Project[];
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-    packages: Package[];
-    userProfile: Profile;
-    setProfile: React.Dispatch<React.SetStateAction<Profile>>;
-    handleNavigation: (view: ViewType, action?: NavigationAction) => void;
-    showNotification: (message: string) => void;
+    handleNavigation?: (view: ViewType, action?: NavigationAction) => void;
+    showNotification?: (message: string) => void;
 }
 
 const Booking: React.FC<BookingProps> = (props) => {
-    const {
-        leads, clients, projects, setProjects,
-        userProfile, handleNavigation, showNotification
-    } = props;
+    const { 
+        showNotification: contextShowNotification,
+    } = useApp();
+    const { setActiveView } = useUIStore();
+
+    const showNotification = props.showNotification || contextShowNotification;
+    
+    const handleNavigation = useCallback((view: ViewType, action?: NavigationAction) => {
+        if (props.handleNavigation) {
+            props.handleNavigation(view, action);
+            return;
+        }
+        setActiveView(view);
+        const pathMap: any = {
+            [ViewType.HOMEPAGE]: "home",
+            [ViewType.DASHBOARD]: "dashboard",
+        };
+        const newPath = pathMap[view] || view.toLowerCase().replace(/ /g, "-");
+        window.location.hash = `#/${newPath}`;
+    }, [props.handleNavigation, setActiveView]);
+
+
+
+    const queryClient = useQueryClient();
+    const { data: qProjects } = useProjects();
+    const projects = qProjects || [];
+    const { data: qClients } = useClients();
+    const clients = qClients || [];
+    const { data: leads = [] } = useLeads();
+    const { data: packages = [] } = useQuery({ queryKey: ['packages'], queryFn: listPackages });
+
+    const setProjects = (updater: React.SetStateAction<Project[]>) => {
+        const current = queryClient.getQueryData<Project[]>(['projects']) || [];
+        const next = typeof updater === 'function' ? updater(current) : updater;
+        queryClient.setQueryData(['projects'], next);
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+    };
 
     const {
         // UI & State
@@ -155,9 +191,9 @@ const Booking: React.FC<BookingProps> = (props) => {
                     client={whatsappTemplateModal.client}
                     onClose={() => setWhatsappTemplateModal(null)}
                     showNotification={showNotification}
-                    userProfile={userProfile}
                 />
             )}
+
 
             <Modal isOpen={!!viewingProofUrl} onClose={() => setViewingProofUrl(null)} title="Bukti Pembayaran">
                 {viewingProofUrl && (

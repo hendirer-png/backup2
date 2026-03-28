@@ -1,4 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useClients } from '@/features/clients/api/useClients';
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useTeamMembers } from '@/features/team/api/useTeamQueries';
+
 import { Client, Project, TeamMember, ViewType, NavigationAction } from '@/types';
 import Modal from '@/shared/ui/Modal';
 import { UsersIcon, FolderKanbanIcon, BriefcaseIcon } from '@/constants';
@@ -12,15 +16,23 @@ const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
 interface GlobalSearchProps {
     isOpen: boolean;
     onClose: () => void;
-    clients: Client[];
-    projects: Project[];
-    teamMembers: TeamMember[];
     handleNavigation: (view: ViewType, action: NavigationAction) => void;
 }
 
-const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose, clients, projects, teamMembers, handleNavigation }) => {
+
+const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose, handleNavigation }) => {
+    // Fetch search data internally
+    const { data: clientsData } = useClients({ limit: 500 });
+    const { data: projectsData } = useProjects({ limit: 500 });
+    const { data: teamMembersData } = useTeamMembers();
+
+    const clients = clientsData || [];
+    const projects = projectsData || [];
+    const teamMembers = teamMembersData || [];
+
     const [searchTerm, setSearchTerm] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+
 
     useEffect(() => {
         if (isOpen) {

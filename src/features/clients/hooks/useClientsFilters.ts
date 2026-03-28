@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { ExtendedClient } from '@/features/clients/types/clients.types';
+import { ExtendedClient } from '@/features/clients/types';
+
 
 export function useClientsFilters(allClientData: ExtendedClient[]) {
     const [searchTerm, setSearchTerm] = useState('');

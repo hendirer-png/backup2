@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { Lead, LeadStatus, ContactChannel } from '@/types';
 import { createSuggestion } from '@/services/suggestions';
 
-interface SuggestionFormProps {
-    setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-}
+const SuggestionForm: React.FC = () => {
 
-const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads }) => {
     const [name, setName] = useState('');
     const [contact, setContact] = useState('');
     const [message, setMessage] = useState('');
@@ -27,17 +23,6 @@ const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads }) => {
                 channel: 'SUGGESTION_FORM',
             });
 
-            // Backward-compat: tetap dorong ke leads state agar metrik lama tetap berjalan
-            const newLead: Lead = {
-                id: crypto.randomUUID(),
-                name: name,
-                contactChannel: ContactChannel.SUGGESTION_FORM,
-                location: 'Form Online',
-                status: LeadStatus.DISCUSSION,
-                date: new Date().toISOString().split('T')[0],
-                notes: `Kontak: ${contact}\n\nPesan:\n${message}`
-            };
-            setLeads(prev => [newLead, ...prev]);
             setIsSubmitted(true);
         } catch (err) {
             alert('Gagal mengirim saran. Silakan coba lagi.');
@@ -45,6 +30,7 @@ const SuggestionForm: React.FC<SuggestionFormProps> = ({ setLeads }) => {
             setIsSubmitting(false);
         }
     };
+
     
     const Logo = () => (
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">

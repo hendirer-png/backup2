@@ -54,23 +54,36 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                 {modalState.type === 'transaction' && (
                     <CollapsibleSection title="Informasi Transaksi" defaultExpanded={true} variant="filled">
                         <div className="space-y-4 p-1">
+                            <div className="space-y-1">
+                                <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Tanggal</label>
+                                <input type="date" name="date" value={form.date || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono" required />
+                            </div>
+                            
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Jenis</label>
-                                    <select name="type" value={form.type} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
+                                    <select name="type" value={form.type || TransactionType.EXPENSE} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
                                         <option value={TransactionType.EXPENSE}>Pengeluaran</option>
                                         <option value={TransactionType.INCOME}>Pemasukan</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Tanggal</label>
-                                    <input type="date" name="date" value={form.date} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono" required />
+                                    <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Metode Pembayaran</label>
+                                    <select name="method" value={form.method || 'Transfer Bank'} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
+                                        <option value="Transfer Bank">Transfer Bank</option>
+                                        <option value="Tunai">Tunai</option>
+                                        <option value="E-Wallet">E-Wallet</option>
+                                        <option value="Kartu">Kartu / CC</option>
+                                        <option value="Sistem">Sistem</option>
+                                    </select>
                                 </div>
                             </div>
+
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Deskripsi</label>
-                                <input type="text" name="description" value={form.description} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-semibold" placeholder="Nama transaksi..." required />
+                                <input type="text" name="description" value={form.description || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-semibold" placeholder="Nama transaksi..." required />
                             </div>
+
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Jumlah (IDR)</label>
                                 <RupiahInput
@@ -81,10 +94,11 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                                     required
                                 />
                             </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Kategori</label>
-                                    <select name="category" value={form.category} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
+                                    <select name="category" value={form.category || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
                                         <option value="">Pilih Kategori...</option>
                                         {(form.type === TransactionType.INCOME ? profile.incomeCategories : profile.expenseCategories).map(cat => (
                                             <option key={cat} value={cat}>{cat}</option>
@@ -118,6 +132,7 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                                     </div>
                                 )}
                             </div>
+
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Terkait Proyek (Opsional)</label>
                                 <select name="projectId" value={form.projectId || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-semibold">
@@ -135,13 +150,13 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Jenis Akun</label>
-                                    <select name="cardType" value={form.cardType} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
+                                    <select name="cardType" value={form.cardType || CardType.DEBIT} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
                                         {Object.values(CardType).map(ct => <option key={ct} value={ct}>{ct}</option>)}
                                     </select>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">{form.cardType === CardType.TUNAI ? 'Nama Akun Kas' : 'Nama Pemegang Kartu'}</label>
-                                    <input type="text" name="cardHolderName" value={form.cardHolderName} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
+                                    <input type="text" name="cardHolderName" value={form.cardHolderName || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
                                 </div>
                             </div>
                             {modalState.mode === 'add' && (
@@ -154,16 +169,16 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                                 <>
                                     <div className="space-y-1">
                                         <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nama Bank</label>
-                                        <input type="text" name="bankName" value={form.bankName} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
+                                        <input type="text" name="bankName" value={form.bankName || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">4 Digit Terakhir</label>
-                                            <input type="text" name="lastFourDigits" value={form.lastFourDigits} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono font-bold" maxLength={4} required placeholder="0000" />
+                                            <input type="text" name="lastFourDigits" value={form.lastFourDigits || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono font-bold" maxLength={4} required placeholder="0000" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Kadaluwarsa</label>
-                                            <input type="text" name="expiryDate" value={form.expiryDate} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono" placeholder="MM/YY" />
+                                            <input type="text" name="expiryDate" value={form.expiryDate || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-mono" placeholder="MM/YY" />
                                         </div>
                                     </div>
                                 </>
@@ -192,15 +207,15 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                         <div className="space-y-4 p-1">
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Nama Kantong</label>
-                                <input type="text" name="name" value={form.name} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
+                                <input type="text" name="name" value={form.name || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Deskripsi</label>
-                                <textarea name="description" value={form.description} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white min-h-[80px] resize-none" placeholder="Tujuan kantong ini..." />
+                                <textarea name="description" value={form.description || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white min-h-[80px] resize-none" placeholder="Tujuan kantong ini..." />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Sumber Dana Utama</label>
-                                <select name="sourceCardId" value={form.sourceCardId} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
+                                <select name="sourceCardId" value={form.sourceCardId || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
                                     <option value="">Pilih Sumber...</option>
                                     {cards.map(c => <option key={c.id} value={c.id}>{c.bankName || 'Tunai'} {c.lastFourDigits !== 'CASH' && `**** ${c.lastFourDigits}`}</option>)}
                                 </select>
@@ -208,7 +223,7 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Tipe</label>
-                                    <select name="type" value={form.type} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
+                                    <select name="type" value={form.type || PocketType.SAVING} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold">
                                         {Object.values(PocketType).map(pt => <option key={pt} value={pt}>{pt}</option>)}
                                     </select>
                                 </div>
@@ -226,7 +241,7 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                         <div className="space-y-4 p-1">
                             <div className="space-y-1">
                                 <label className="text-[10px] uppercase font-bold tracking-widest text-brand-text-secondary">Sumber Dana</label>
-                                <select name="fromCardId" value={form.fromCardId} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
+                                <select name="fromCardId" value={form.fromCardId || ''} onChange={onFormChange} className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white font-bold" required>
                                     <option value="">Pilih Kartu Sumber...</option>
                                     {cards.filter(c => c.cardType !== CardType.TUNAI).map(c => <option key={c.id} value={c.id}>{c.bankName} **** {c.lastFourDigits} (Saldo: {formatCurrency(c.balance)})</option>)}
                                 </select>
@@ -253,6 +268,5 @@ export const FinanceModals: React.FC<FinanceModalsProps> = ({
                 </div>
             </form>
         </Modal>
-
     );
 };

@@ -1,19 +1,18 @@
 import { useState, useMemo } from 'react';
 import { Transaction, FinancialPocket, Card, Project, TransactionType } from '@/types';
+import { useTransactions, useCards, usePockets } from '@/features/finance/api/useFinanceQueries';
 
-interface UseFinanceDataProps {
-    transactions: Transaction[];
-    setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-    pockets: FinancialPocket[];
-    cards: Card[];
-}
+export const useFinanceData = () => {
+    const [limit, setLimit] = useState(100);
 
-export const useFinanceData = ({
-    transactions,
-    setTransactions,
-    pockets,
-    cards
-}: UseFinanceDataProps) => {
+    // 1. Fetch data from React Query
+    const { data: queryTransactions, isLoading: isTxLoading } = useTransactions({ limit });
+    const { data: queryCards } = useCards();
+    const { data: queryPockets } = usePockets();
+
+    const transactions = queryTransactions || [];
+    const cards = queryCards || [];
+    const pockets = queryPockets || [];
     const [offset, setOffset] = useState(100);
     const [hasMore, setHasMore] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -22,19 +21,15 @@ export const useFinanceData = ({
         if (isLoadingMore || !hasMore) return;
         setIsLoadingMore(true);
         try {
-            const { listTransactions } = await import('@/services/transactions');
-            const nextTxs = await listTransactions({ limit: 100, offset });
-            if (nextTxs.length < 100) {
-                setHasMore(false);
-            }
-            if (nextTxs.length > 0) {
-                setTransactions(prev => {
-                    const existingIds = new Set(prev.map(t => t.id));
-                    const uniqueNew = nextTxs.filter(t => !existingIds.has(t.id));
-                    return [...prev, ...uniqueNew].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                });
-                setOffset(prev => prev + 100);
-            } else {
+            // Because React Query handles fetching, we just increase the limit.
+            // The hook will trigger a re-fetch in the background.
+            setLimit(prev => prev + 100);
+            
+            // Artificial delay to mimic loading state for the UI, as RQ fetching is backgrounded
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // If the returned list size doesn't increase by limit, we hit the end
+            if (transactions.length < limit) {
                 setHasMore(false);
             }
         } catch (e) {
@@ -75,8 +70,11 @@ export const useFinanceData = ({
     }, [cards, pockets, transactions]);
 
     return {
+        transactions,
+        pockets,
+        cards,
         hasMore,
-        isLoadingMore,
+        isLoadingMore: isLoadingMore || isTxLoading,
         loadMoreTransactions,
         summary
     };

@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
-import { LeadStatus, ContactChannel, PublicLeadFormProps } from '@/types';
+import { Profile, LeadStatus, ContactChannel } from '@/types';
+import { useApp } from "@/app/AppContext";
 import { createLead } from '@/services/leads';
 import { cleanPhoneNumber } from '@/constants';
 
-const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, showNotification }) => {
+interface PublicLeadProps {
+    userProfile?: Profile;
+    showNotification?: (message: string) => void;
+}
+
+const PublicLeadForm: React.FC<PublicLeadProps> = (props) => {
+    const { showNotification: contextShowNotification } = useApp();
+    const userProfile = props.userProfile || ({} as Profile);
+    const showNotification = props.showNotification || contextShowNotification;
+
+
     const [formState, setFormState] = useState({
         name: '',
         whatsapp: '',
@@ -24,7 +35,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
         const notes = `Lead baru dari formulir website. Kota: ${formState.eventLocation}. Menunggu diskusi lebih lanjut.`;
 
         try {
-            const created = await createLead({
+            await createLead({
                 name: formState.name,
                 whatsapp: formState.whatsapp,
                 contactChannel: ContactChannel.WEBSITE,
@@ -33,18 +44,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
                 date: new Date().toISOString(),
                 notes,
             });
-            setLeads(prev => [created, ...prev]);
             setIsSubmitted(true);
-
-            if ((window as any).addNotification) {
-                (window as any).addNotification({
-                    title: 'Calon Pengantin Baru',
-                    message: `${formState.name} telah mengisi formulir lead.`,
-                    type: 'info',
-                    action: { view: 'Calon Pengantin' }
-                });
-            }
-
             showNotification('Informasi Anda telah kami terima. Terima kasih!');
         } catch (err: any) {
             console.error('Submit error:', err);
@@ -53,6 +53,7 @@ const PublicLeadForm: React.FC<PublicLeadFormProps> = ({ setLeads, userProfile, 
             setIsSubmitting(false);
         }
     };
+
 
     React.useEffect(() => {
         if (userProfile.companyName) {
