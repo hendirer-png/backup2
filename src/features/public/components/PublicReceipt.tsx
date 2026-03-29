@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Transaction, Profile, Project, Client, TransactionType } from '@/types';
 import { DownloadIcon } from '@/constants';
 import { getTransaction } from '@/services/transactions';
@@ -6,11 +7,9 @@ import { getProjectWithRelations } from '@/services/projects';
 import { getProfile } from '@/services/profile';
 import { getClient } from '@/services/clients';
 
-interface PublicReceiptProps {
-    transactionId: string;
-}
-
-const PublicReceipt: React.FC<PublicReceiptProps> = ({ transactionId }) => {
+const PublicReceipt: React.FC = () => {
+    const { transactionId } = useParams<{ transactionId: string }>();
+    const navigate = useNavigate();
     const [transaction, setTransaction] = useState<Transaction | null>(null);
     const [project, setProject] = useState<Project | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);

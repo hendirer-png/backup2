@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { createSuggestion } from '@/services/suggestions';
 
 const SuggestionForm: React.FC = () => {
@@ -53,7 +54,7 @@ const SuggestionForm: React.FC = () => {
                      }} className="mt-6 button-primary">
                         Kirim Masukan Lain
                     </button>
-                    <a href="#" className="mt-4 text-sm text-brand-text-secondary hover:underline block">Kembali ke Beranda</a>
+                    <Link to="/" className="mt-4 text-sm text-brand-text-secondary hover:underline block">Kembali ke Beranda</Link>
                 </div>
             </div>
         );

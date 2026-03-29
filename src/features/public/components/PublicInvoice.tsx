@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Project, Profile, Package, Client } from '@/types';
 import InvoiceDocument from '@/features/finance/components/InvoiceDocument';
 import { DownloadIcon } from '@/constants';
@@ -7,17 +8,9 @@ import { getClient } from '@/services/clients';
 import { listPackages } from '@/services/packages';
 import { getProfile } from '@/services/profile';
 
-interface PublicInvoiceProps {
-    projectId: string;
-    // These props are kept for backward compatibility but the component
-    // now fetches its own data from Supabase directly.
-    projects?: Project[];
-    profile?: Profile;
-    packages?: Package[];
-    clients?: Client[];
-}
-
-const PublicInvoice: React.FC<PublicInvoiceProps> = ({ projectId }) => {
+const PublicInvoice: React.FC = () => {
+    const { projectId } = useParams<{ projectId: string }>();
+    const navigate = useNavigate();
     const [project, setProject] = useState<Project | null>(null);
     const [client, setClient] = useState<Client | null | undefined>(undefined);
     const [packages, setPackages] = useState<Package[]>([]);
@@ -26,6 +19,7 @@ const PublicInvoice: React.FC<PublicInvoiceProps> = ({ projectId }) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        console.log("Page Loaded: Public Invoice", projectId);
         if (!projectId) {
             setError('ID invoice tidak valid.');
             setLoading(false);

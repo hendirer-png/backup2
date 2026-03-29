@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Gallery, GalleryImage, Profile } from '@/types';
 import { getPublicGallery } from '@/services/galleries';
 import { getProfile } from '@/services/profile';
 import { cleanPhoneNumber } from '@/constants';
 import { LazyImage } from '@/shared/ui/LazyImage';
-
-interface PublicGalleryProps {
-    galleryId: string;
-}
 
 // Sanitize image URLs to prevent XSS attacks
 const sanitizeImageUrl = (url: string): string => {
@@ -25,7 +22,11 @@ const sanitizeImageUrl = (url: string): string => {
     }
 };
 
-const PublicGallery: React.FC<PublicGalleryProps> = ({ galleryId }) => {
+const PublicGallery: React.FC = () => {
+    const { id: galleryId } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
+    const regionParam = searchParams.get('region');
+
     const [gallery, setGallery] = useState<Gallery | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +35,10 @@ const PublicGallery: React.FC<PublicGalleryProps> = ({ galleryId }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
-        loadGalleryData();
+        console.log("Page Loaded: Public Gallery", galleryId);
+        if (galleryId) {
+            loadGalleryData();
+        }
     }, [galleryId]);
 
     const loadGalleryData = async () => {

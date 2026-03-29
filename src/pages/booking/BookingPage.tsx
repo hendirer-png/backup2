@@ -6,8 +6,6 @@ import Modal from '@/shared/ui/Modal';
 import { CalendarIcon } from '@/constants';
 
 // Feature Components
-import BookingStats from '@/features/booking/components/BookingStats';
-import BookingChartsSection from '@/features/booking/components/BookingChartsSection';
 import BookingTable from '@/features/booking/components/BookingTable';
 import WhatsappTemplateModal from '@/features/booking/components/WhatsappTemplateModal';
 
@@ -108,19 +106,6 @@ const Booking: React.FC<BookingProps> = (props) => {
                     Pelajari
                 </button>
             </PageHeader>
-
-            <BookingStats 
-                allBookingsCount={allBookings.length}
-                totalValue={allBookings.reduce((sum, b) => sum + b.project.totalCost, 0)}
-                mostPopularPackage={mostPopularPackage}
-                newBookingsCount={newBookings.length}
-                onStatClick={setActiveStatModal}
-            />
-
-            <BookingChartsSection 
-                bookings={allBookings}
-                packageData={packageDonutData}
-            />
 
             {/* Booking Baru Section */}
             <BookingTable 

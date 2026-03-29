@@ -6,7 +6,6 @@ import { LeadsPageProps } from '@/features/leads/types';
 import { useLeadsPage } from '@/features/leads/hooks/useLeadsPage';
 import { LeadForm } from '@/features/leads/components/LeadForm';
 import { ConvertLeadForm } from '@/features/leads/components/ConvertLeadForm';
-import { LeadsAnalytics } from '@/features/leads/components/LeadsAnalytics';
 import { LeadFilterBar } from '@/features/leads/components/LeadFilterBar';
 import { LeadKanban } from '@/features/leads/components/LeadKanban';
 import { ShareMessageModal } from '@/features/leads/components/ShareMessageModal';
@@ -140,8 +139,6 @@ export const LeadsPage: React.FC<LeadsPageProps> = (props) => {
                             <span>Tambah Calon Pengantin</span>
                         </button>
                     </PageHeader>
-
-                    <LeadsAnalytics leads={leads} totals={totals} onStatCardClick={handleStatCardClick} />
 
                     <LeadFilterBar
                         searchTerm={searchTerm}

@@ -262,6 +262,7 @@ const Packages: React.FC<PackagesProps> = () => {
                 onCopyLink={copyPackagesLinkToClipboard}
                 onCopyBookingLink={copyBookingLinkToClipboard}
                 regionName={regionFilter ? unionRegions.find(r => r.value === regionFilter)?.label : undefined}
+                unionRegions={unionRegions}
             />
         </div>
     );

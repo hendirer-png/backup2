@@ -32,6 +32,7 @@ const BottomNavBar: React.FC = () => {
             [ViewType.PROMO_CODES]: "promo-codes",
             [ViewType.CLIENT_REPORTS]: "client-reports",
             [ViewType.SETTINGS]: "settings",
+            [ViewType.CONTRACTS]: "kontrak",
         };
 
         const newRoute = `#/${pathMap[view] || view.toLowerCase().replace(/ /g, "-")}`;
@@ -101,6 +102,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
           [ViewType.PROMO_CODES]: "promo-codes",
           [ViewType.CLIENT_REPORTS]: "client-reports",
           [ViewType.SETTINGS]: "settings",
+          [ViewType.CONTRACTS]: "kontrak",
       };
       const newRoute = `#/${pathMap[view] || view.toLowerCase().replace(/ /g, "-")}`;
       window.location.hash = newRoute;

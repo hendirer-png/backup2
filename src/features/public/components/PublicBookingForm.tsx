@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { REGIONS, Package, AddOn, Profile, Client, Project, Transaction, Card, FinancialPocket, PromoCode, Lead, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType } from '@/types';
 import { useApp } from "@/app/AppContext";
 import { listPackages } from '@/services/packages';
@@ -7,6 +8,7 @@ import { listCards } from '@/services/cards';
 import { listPockets } from '@/services/pockets';
 import { listPromoCodes } from '@/services/promoCodes';
 import { listLeads } from '@/services/leads';
+import { getProfile } from '@/services/profile';
 
 import Modal from '@/shared/ui/Modal';
 import { MessageSquareIcon } from '@/constants';
@@ -65,6 +67,10 @@ interface PublicBookingProps {
 const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     const { showNotification: contextShowNotification } = useApp();
     const showNotification = props.showNotification || contextShowNotification;
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const regionParam = searchParams.get('region');
+    const leadIdParam = searchParams.get('leadId');
 
     // Independent state for public form
     const [packages, setPackages] = useState<Package[]>([]);
@@ -75,36 +81,48 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
     const [leads, setLeads] = useState<Lead[]>([]);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Fetch data independently
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [pkgs, ads, crds, pks, promos, lds] = await Promise.all([
+                setIsInitialLoading(true);
+                const [pkgs, ads, crds, pks, promos, lds, profileData] = await Promise.all([
                     listPackages(),
                     listAddOns(),
                     listCards(),
                     listPockets(),
                     listPromoCodes(),
-                    listLeads()
+                    listLeads(),
+                    !props.userProfile ? getProfile() : Promise.resolve(props.userProfile)
                 ]);
                 setPackages(pkgs);
                 setAddOns(ads);
                 setCards(crds as any);
-
                 setPockets(pks);
                 setPromoCodes(promos || []);
                 setLeads(lds);
+                if (profileData) setUserProfile(profileData);
+                setError(null);
             } catch (err) {
                 console.error('Error loading public booking data:', err);
+                setError('Gagal memuat data. Silakan coba lagi.');
             } finally {
                 setIsInitialLoading(false);
             }
         };
         loadData();
-    }, []);
+    }, [props.userProfile]);
 
-    const [formData, setFormData] = useState({ ...initialFormState, projectType: userProfile.projectTypes[0] || '' });
+    const [formData, setFormData] = useState({ ...initialFormState, projectType: '' });
+
+    // Update projectType once userProfile is loaded
+    useEffect(() => {
+        if (userProfile?.projectTypes?.length && !formData.projectType) {
+            setFormData(prev => ({ ...prev, projectType: userProfile?.projectTypes?.[0] || '' }));
+        }
+    }, [userProfile, formData.projectType]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [promoFeedback, setPromoFeedback] = useState({ type: '', message: '' });
@@ -112,14 +130,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const formRef = useRef<HTMLDivElement>(null);
     const [leadId, setLeadId] = useState<string | null>(null);
-    const [selectedRegion, setSelectedRegion] = useState<string | null>(() => {
-        const hash = window.location.hash;
-        if (hash.includes('?')) {
-            const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
-            return urlParams.get('region')?.toLowerCase() || null;
-        }
-        return null;
-    });
+    const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
     const [isLeadDataLoaded, setIsLeadDataLoaded] = useState(false);
     const [isPackagesLoading, setIsPackagesLoading] = useState(true);
 
@@ -188,57 +199,42 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
         });
     }, [addOns, selectedRegion]);
 
-    // Parse region from URL and listen for hash changes
+    // Parse region from URL parameters
     useEffect(() => {
-        const handleHashChange = () => {
-            const hash = window.location.hash;
-            if (hash.includes('?')) {
-                const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
-                const regionParam = urlParams.get('region');
-                if (regionParam) {
-                    const normalizedRegion = regionParam.toLowerCase();
-                    setSelectedRegion(normalizedRegion);
-                    if (import.meta.env.DEV) {
-                        console.log('Region selected from URL change:', normalizedRegion);
-                    }
-                }
+        console.log("Page Loaded: Public Booking Form", regionParam);
+        if (regionParam) {
+            const normalizedRegion = regionParam.toLowerCase();
+            setSelectedRegion(normalizedRegion);
+            if (import.meta.env.DEV) {
+                console.log('Region selected from URL parameter (PublicBookingForm):', normalizedRegion);
             }
-        };
-
-        window.addEventListener('hashchange', handleHashChange);
-        handleHashChange(); // Initial check
-        return () => window.removeEventListener('hashchange', handleHashChange);
-    }, []);
+        } else {
+            setSelectedRegion(null);
+        }
+    }, [regionParam]);
 
     // Handle lead ID separately when leads data is available (only once)
     useEffect(() => {
-        if (isLeadDataLoaded || leads.length === 0) return;
+        if (isLeadDataLoaded || leads.length === 0 || !leadIdParam) return;
 
-        const hash = window.location.hash;
-        if (hash.includes('?')) {
-            const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
-            const id = urlParams.get('leadId');
-            if (id) {
-                setLeadId(id);
-                const lead = leads.find(l => l.id === id);
-                if (lead) {
-                    setFormData(prev => ({
-                        ...prev,
-                        clientName: lead.name,
-                        phone: lead.whatsapp || '',
-                        location: lead.location,
-                    }));
-                    setIsLeadDataLoaded(true);
-                }
-            }
+        setLeadId(leadIdParam);
+        const lead = leads.find(l => l.id === leadIdParam);
+        if (lead) {
+            setFormData(prev => ({
+                ...prev,
+                clientName: lead.name,
+                phone: lead.whatsapp || '',
+                location: lead.location,
+            }));
+            setIsLeadDataLoaded(true);
         }
-    }, [leads, isLeadDataLoaded]);
+    }, [leads, isLeadDataLoaded, leadIdParam]);
 
-    const template = userProfile.publicPageConfig?.template || 'classic';
+    const template = userProfile?.publicPageConfig?.template || 'classic';
 
     const formattedTerms = useMemo(() => {
-        if (!userProfile.termsAndConditions) return null;
-        return userProfile.termsAndConditions.split('\n').map((line, index) => {
+        if (!userProfile?.termsAndConditions) return null;
+        return userProfile?.termsAndConditions?.split('\n').map((line, index) => {
             if (line.trim() === '') return <div key={index} className="h-4"></div>;
             const emojiRegex = /^(📜|📅|💰|📦|⏱|➕)\s/;
             if (emojiRegex.test(line)) {
@@ -249,7 +245,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
             }
             return <p key={index} className="text-brand-text-primary">{line}</p>;
         });
-    }, [userProfile.termsAndConditions]);
+    }, [userProfile?.termsAndConditions]);
 
 
     const { totalBeforeDiscount, discountAmount, totalProject, discountText } = useMemo(() => {
@@ -493,10 +489,22 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     };
 
 
-    if (isInitialLoading) {
+    if (isInitialLoading || !userProfile) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center p-8 bg-public-surface rounded-2xl shadow-lg border border-public-border">
+                    <h2 className="text-xl font-bold text-red-600 mb-4">Terjadi Kesalahan</h2>
+                    <p className="text-public-text-secondary mb-6">{error}</p>
+                    <button onClick={() => navigate(0)} className="button-primary">Coba Lagi</button>
+                </div>
             </div>
         );
     }
@@ -512,7 +520,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                         type="button"
                         onClick={() => {
                             setIsSubmitted(false);
-                            setFormData({ ...initialFormState, projectType: userProfile.projectTypes[0] || '' });
+                            setFormData({ ...initialFormState, projectType: userProfile?.projectTypes?.[0] || '' });
                             setPaymentProof(null);
                             setPromoFeedback({ type: '', message: '' });
                             setHoneypot('');
@@ -527,7 +535,6 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     }
     // Region gate: do not show all regions. Ask user to choose a region link first.
     if (!selectedRegion) {
-        const base = `${window.location.origin}${window.location.pathname}#/public-booking`;
         return (
             <div className="flex items-center justify-center min-h-screen p-3 md:p-4">
                 <div className="w-full max-w-lg p-6 md:p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-public-border">
@@ -535,7 +542,13 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                     <p className="mt-3 text-public-text-secondary text-xs md:text-sm">Untuk meminimalisir kesalahan, silakan pilih wilayah terlebih dahulu.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
                         {unionRegions.map(r => (
-                            <a key={r.value} className="button-primary text-center" href={`${base}?region=${r.value}`}>{r.label}</a>
+                            <Link 
+                                key={r.value} 
+                                className="button-primary text-center" 
+                                to={`/public-booking?region=${r.value}`}
+                            >
+                                {r.label}
+                            </Link>
                         ))}
                     </div>
                 </div>
@@ -555,15 +568,15 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                 @media (max-width: 768px) { .template-modern .form-container { grid-template-columns: 1fr; } }
             `}</style>
             <div ref={formRef} className="form-container">
-                {template === 'modern' && (
+                {template === 'modern' && userProfile && (
                     <div className="p-4 sm:p-6 md:p-8 bg-public-surface rounded-2xl border border-public-border hidden md:block">
-                        {userProfile.logoBase64 ? <img src={userProfile.logoBase64} alt="logo" className="h-12 mb-4" /> : <h2 className="text-2xl font-bold text-gradient">{userProfile.companyName}</h2>}
-                        <p className="text-public-text-secondary text-sm mt-4">{userProfile.bio}</p>
+                        {userProfile?.logoBase64 ? <img src={userProfile.logoBase64} alt="logo" className="h-12 mb-4" /> : <h2 className="text-2xl font-bold text-gradient">{userProfile?.companyName}</h2>}
+                        <p className="text-public-text-secondary text-sm mt-4">{userProfile?.bio}</p>
                     </div>
                 )}
                 <div className="bg-public-surface p-3 md:p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg border border-public-border">
                     <div className="text-center mb-6 md:mb-8">
-                        <h1 className="text-2xl md:text-3xl font-bold text-gradient">{userProfile.companyName}</h1>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gradient">{userProfile?.companyName}</h1>
                         <p className="text-xs md:text-sm text-public-text-secondary mt-2">Formulir Pemesanan Layanan</p>
                     </div>
 
@@ -609,7 +622,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                                         <label htmlFor="projectType" className="block text-xs text-public-text-secondary">Jenis Acara Pernikahan</label>
                                         <select id="projectType" name="projectType" value={formData.projectType} onChange={handleFormChange} className="w-full px-4 py-3 rounded-xl border border-public-border bg-white/5 text-public-text-primary focus:outline-none focus:ring-2 focus:ring-public-accent focus:border-transparent transition-all" required>
                                             <option value="" disabled>Pilih Jenis...</option>
-                                            {userProfile.projectTypes.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+                                            {userProfile?.projectTypes?.map(pt => <option key={pt} value={pt}>{pt}</option>)}
                                         </select>
                                         <p className="text-xs text-public-text-secondary">Pilih jenis Acara Pernikahan</p>
                                     </div>
@@ -750,7 +763,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                                     <div className="flex justify-between items-center font-bold text-lg"><span className="text-public-text-secondary">Total Biaya</span><span className="text-public-text-primary">{formatCurrency(totalProject)}</span></div>
                                     <hr className="border-public-border" />
                                     <p className="text-sm text-public-text-secondary">Silakan transfer Uang Muka (DP) ke rekening berikut:</p>
-                                    <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border">{userProfile.bankAccount}</p>
+                                    <p className="font-semibold text-public-text-primary text-center py-2 bg-public-surface rounded-md border border-public-border">{userProfile?.bankAccount}</p>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label htmlFor="dp" className="block text-xs text-public-text-secondary">Jumlah DP Ditransfer</label>

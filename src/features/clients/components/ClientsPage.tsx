@@ -19,7 +19,6 @@ import { useProfile } from '@/features/settings/api/useProfileQueries';
 import { useClientsPage } from '@/features/clients/hooks/useClientsPage';
 
 // Components (Named & Default Imports)
-import { ClientStatsCards } from '@/features/clients/components/ClientStatsCards';
 import { ClientFilterBar } from '@/features/clients/components/ClientFilterBar';
 import { ClientHeader } from '@/features/clients/components/ClientHeader';
 import { ClientActiveList } from '@/features/clients/components/ClientActiveList';
@@ -28,7 +27,6 @@ import { ClientUnpaidList } from '@/features/clients/components/ClientUnpaidList
 import { ClientForm } from '@/features/clients/components/ClientForm';
 import ClientDetailModal from '@/features/clients/components/ClientDetailModal';
 import BillingChatModal from '@/features/clients/components/BillingChatModal';
-import { NewClientsChart } from '@/features/clients/components/NewClientsChart';
 import { ClientPortalQrModal, BookingFormShareModal } from '@/features/clients/components/ClientLinkModals';
 import { InvoicePreviewModal } from '@/features/clients/components/InvoicePreviewModal';
 import { ReceiptPreviewModal } from '@/features/clients/components/ReceiptPreviewModal';
@@ -206,7 +204,7 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
 
     const handleManageProjects = (client: ExtendedClient) => {
         setMainTab('progress');
-        window.location.hash = '#/progress';
+        window.location.hash = '#/projects';
         if (client.mostRecentProject) {
             projectActions.handleOpenDetailModal(client.mostRecentProject);
         }
@@ -247,7 +245,7 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
                     Database Pengantin
                 </button>
                 <button
-                    onClick={() => { setMainTab('progress'); window.location.hash = '#/progress'; }}
+                    onClick={() => { setMainTab('progress'); window.location.hash = '#/projects'; }}
                     className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${mainTab === 'progress' ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-accent hover:bg-brand-accent/5'}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +254,7 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
                     Progress & Timeline Acara
                 </button>
                 <button
-                    onClick={() => { setMainTab('contracts'); window.location.hash = '#/contracts'; }}
+                    onClick={() => { setMainTab('contracts'); window.location.hash = '#/kontrak'; }}
                     className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 ${mainTab === 'contracts' ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-accent hover:bg-brand-accent/5'}`}
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,10 +271,6 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
                         onDownloadClients={handleDownloadClients}
                         onShareBookingForm={handleOpenBookingModal}
                     />
-
-                    <ClientStatsCards stats={clientStats} />
-
-                    <NewClientsChart clients={clients} />
 
                     <ClientUnpaidList
                         clients={filteredClientData.filter(c => c.balanceDue > 0)}

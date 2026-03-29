@@ -41,39 +41,80 @@ export const PackageShareModal: React.FC<{
     onCopyLink: () => void; 
     onCopyBookingLink: () => void;
     regionName?: string;
+    unionRegions?: { value: string; label: string }[];
 }> = ({ 
-    isOpen, onClose, publicUrl, bookingUrl, onCopyLink, onCopyBookingLink, regionName 
-}) => (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Bagikan Tautan ${regionName ? `(${regionName})` : ''}`}>
-        <div className="space-y-6">
-            <p className="text-sm text-brand-text-secondary">Pilih tautan yang ingin Anda bagikan kepada calon pengantin.</p>
-            
-            <div className="space-y-4">
-                {/* Pricelist Link */}
-                <div className="p-4 bg-brand-bg rounded-2xl border border-brand-border flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-brand-text-secondary uppercase tracking-widest">Tautan Pricelist (Katalog)</p>
-                        <span className="bg-brand-accent/10 px-2 py-0.5 rounded text-[9px] font-bold text-brand-accent uppercase">Public</span>
-                    </div>
-                    <div className="bg-white p-2.5 rounded-xl border border-brand-border text-xs font-medium text-brand-text-primary truncate select-all">
-                        {publicUrl}
-                    </div>
-                    <button onClick={onCopyLink} className="button-primary py-2 text-xs shadow-md">Salin Tautan Pricelist</button>
-                </div>
+    isOpen, onClose, publicUrl, bookingUrl, onCopyLink, onCopyBookingLink, regionName, unionRegions = []
+}) => {
+    const copyToClipboard = (text: string, label: string) => {
+        navigator.clipboard.writeText(text)
+            .then(() => alert(`${label} berhasil disalin!`))
+            .catch(err => console.error('Gagal menyalin:', err));
+    };
 
-                {/* Booking Link */}
-                <div className="p-4 bg-brand-bg rounded-2xl border border-brand-border flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-brand-text-secondary uppercase tracking-widest">Tautan Formulir Booking</p>
-                        <span className="bg-green-500/10 px-2 py-0.5 rounded text-[9px] font-bold text-green-600 uppercase">Direct</span>
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Bagikan Tautan ${regionName ? `(${regionName})` : ''}`}>
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                <p className="text-sm text-brand-text-secondary italic">Pilih atau salin tautan spesifik wilayah untuk memudahkan calon pengantin Anda.</p>
+                
+                <div className="space-y-6">
+                    {/* General Links Section */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-brand-accent uppercase tracking-widest px-1">Tautan Umum</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-3 bg-brand-bg rounded-xl border border-brand-border flex flex-col gap-2">
+                                <p className="text-[10px] font-bold text-brand-text-secondary uppercase">Katalog (Pricelist)</p>
+                                <button onClick={onCopyLink} className="button-primary py-2 text-[10px] font-bold uppercase tracking-wider shadow-sm">Salin Katalog</button>
+                            </div>
+                            <div className="p-3 bg-brand-bg rounded-xl border border-brand-border flex flex-col gap-2">
+                                <p className="text-[10px] font-bold text-brand-text-secondary uppercase">Form Booking</p>
+                                <button onClick={onCopyBookingLink} className="button-secondary py-2 text-[10px] font-bold uppercase tracking-wider shadow-sm border-brand-accent text-brand-accent hover:bg-brand-accent hover:text-white">Salin Booking</button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-white p-2.5 rounded-xl border border-brand-border text-xs font-medium text-brand-text-primary truncate select-all">
-                        {bookingUrl}
+
+                    {/* Regional Links Section */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-brand-accent uppercase tracking-widest px-1">Tautan Per Wilayah</h4>
+                        <div className="space-y-2">
+                            {unionRegions.map(region => {
+                                const regPackagesUrl = `${baseUrl}#/public-packages/VEN001?region=${region.value.toLowerCase()}`;
+                                const regBookingUrl = `${baseUrl}#/public-booking?region=${region.value.toLowerCase()}`;
+                                
+                                return (
+                                    <div key={region.value} className="p-4 bg-brand-surface/40 rounded-2xl border border-brand-border/60 hover:border-brand-accent transition-all group">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className="text-sm font-black text-brand-text-light">{region.label}</span>
+                                            <div className="flex gap-2">
+                                                <span className="bg-brand-accent/10 px-2 py-0.5 rounded text-[8px] font-black text-brand-accent uppercase">Region Specific</span>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button 
+                                                onClick={() => copyToClipboard(regPackagesUrl, `Tautan Katalog ${region.label}`)}
+                                                className="flex items-center justify-center gap-2 py-2 px-3 bg-white/5 border border-brand-border rounded-lg text-[9px] font-bold text-brand-text-secondary hover:bg-brand-accent hover:text-white hover:border-brand-accent transition-all"
+                                            >
+                                                Salin Katalog
+                                            </button>
+                                            <button 
+                                                onClick={() => copyToClipboard(regBookingUrl, `Tautan Booking ${region.label}`)}
+                                                className="flex items-center justify-center gap-2 py-2 px-3 bg-white/5 border border-brand-border rounded-lg text-[9px] font-bold text-brand-text-secondary hover:bg-brand-accent hover:text-white hover:border-brand-accent transition-all"
+                                            >
+                                                Salin Booking
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <button onClick={onCopyBookingLink} className="button-secondary py-2 text-xs shadow-md border-brand-accent text-brand-accent hover:bg-brand-accent hover:text-white">Salin Tautan Booking</button>
-                    <p className="text-[9px] text-brand-text-secondary italic text-center">* Tautan ini langsung menuju formulir pemesanan{regionName ? ` yang sudah terfilter untuk wilayah ${regionName}` : ''}.</p>
                 </div>
+                
+                <p className="text-[10px] text-brand-text-secondary italic text-center py-2 bg-brand-accent/5 rounded-lg border border-brand-accent/10">
+                    * Tautan spesifik wilayah akan langsung menampilkan Paket & Add-on yang tersedia di wilayah tersebut.
+                </p>
             </div>
-        </div>
-    </Modal>
-);
+        </Modal>
+    );
+};

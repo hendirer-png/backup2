@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Client, Project, ClientFeedback, SatisfactionLevel, Transaction, Profile, Package, SubStatusConfig, TransactionType, ClientPortalProps, ProjectStatusConfig, TeamMember } from '@/types';
 import { FolderKanbanIcon, ClockIcon, StarIcon, FileTextIcon, HomeIcon, CreditCardIcon, CheckCircleIcon, SendIcon, DownloadIcon, GalleryHorizontalIcon, MessageSquareIcon, ChevronRightIcon, CalendarIcon, BriefcaseIcon, DollarSignIcon, UsersIcon, GoogleIcon, LinkIcon } from '@/constants';
 import Modal from '@/shared/ui/Modal';
@@ -64,13 +65,10 @@ import { getProfile } from '@/services/profile';
 import { listPackages } from '@/services/packages';
 import { listTeamMembers } from '@/services/teamMembers';
 
-interface PortalProps {
-    accessId: string;
-    showNotification?: (message: string, duration?: number) => void;
-}
-
-
-const ClientPortal: React.FC<PortalProps> = ({ accessId, showNotification }) => {
+const ClientPortal: React.FC = () => {
+    const { accessId } = useParams<{ accessId: string }>();
+    const navigate = useNavigate();
+    const showNotification = (message: string) => alert(message); // Fallback if needed
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [client, setClient] = useState<Client | null>(null);
@@ -82,6 +80,7 @@ const ClientPortal: React.FC<PortalProps> = ({ accessId, showNotification }) => 
     const [viewingDocument, setViewingDocument] = useState<{ type: 'invoice' | 'receipt', project: Project, data: any } | null>(null);
 
     useEffect(() => {
+        console.log("Page Loaded: Client Portal", accessId);
         const loadPortalData = async () => {
             setLoading(true);
             try {
@@ -145,7 +144,7 @@ const ClientPortal: React.FC<PortalProps> = ({ accessId, showNotification }) => 
                 <div className="w-full max-w-lg p-8 text-center bg-public-surface rounded-2xl shadow-lg border border-red-100">
                     <h1 className="text-2xl font-bold text-red-500">{error || 'Portal Tidak Ditemukan'}</h1>
                     <p className="mt-4 text-public-text-primary">Tautan yang Anda gunakan tidak valid atau sudah tidak berlaku.</p>
-                    <a href="/" className="mt-6 inline-block text-blue-600 font-bold hover:underline">Kembali ke Beranda</a>
+                    <Link to="/" className="mt-6 inline-block text-blue-600 font-bold hover:underline">Kembali ke Beranda</Link>
                 </div>
             </div>
         );

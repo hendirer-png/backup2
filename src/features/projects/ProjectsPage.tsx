@@ -11,7 +11,6 @@ import { useTransactions, useCards, usePockets } from '@/features/finance/api/us
 // import { useProjectChecklist } from '@/features/projects/hooks/useProjectChecklist'; // Keep if needed for later
 import ProjectHeader from '@/features/projects/components/ProjectHeader';
 import ProjectFilters from '@/features/projects/components/ProjectFilters';
-import ProjectAnalytics from '@/features/projects/components/ProjectAnalytics';
 import ProjectListView from '@/features/projects/components/ProjectListView';
 import ProjectKanbanView from '@/features/projects/components/ProjectKanbanView';
 import ProjectForm from '@/features/projects/components/ProjectForm';
@@ -91,14 +90,6 @@ const ProjectsPage: React.FC<ProjectsProps> = ({
             <ProjectHeader 
                 onAddProject={() => actions.handleOpenForm('add')}
                 onOpenInfoModal={() => {}} // TODO: Implement if needed
-            />
-
-            {/* Analytics Section */}
-            <ProjectAnalytics 
-                projects={projects}
-                projectStatusConfig={profile.projectStatusConfig}
-                totals={totals} 
-                onStatCardClick={actions.setActiveStatModal} 
             />
 
             {/* Filters Section */}

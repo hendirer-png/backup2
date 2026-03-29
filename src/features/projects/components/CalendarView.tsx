@@ -189,12 +189,12 @@ const CalendarSidebar: React.FC<CalendarSidebarProps> = ({ profile, isClientProj
 
 interface CalendarHeaderProps {
     currentDate: Date;
-    viewMode: 'Day' | 'Week' | 'Month' | 'Team' | 'Agenda';
+    viewMode: 'Day' | 'Week' | 'Month' | 'Agenda';
     stats?: { totalProjects: number; totalInternal: number; totalClients: number };
     onPrev: () => void;
     onNext: () => void;
     onToday: () => void;
-    onViewModeChange: (mode: 'Day' | 'Week' | 'Month' | 'Team' | 'Agenda') => void;
+    onViewModeChange: (mode: 'Day' | 'Week' | 'Month' | 'Agenda') => void;
     onInfoClick: () => void;
 }
 
@@ -246,13 +246,13 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({ currentDate, viewMode, 
                         <button onClick={onNext} className="p-2 rounded-full hover:bg-brand-input active:bg-brand-input"><ChevronRightIcon className="w-5 h-5" /></button>
                     </div>
                     <div className="flex-1 flex p-0.5 bg-brand-bg rounded-lg overflow-x-auto">
-                        {(['Day', 'Week', 'Month', 'Team', 'Agenda'] as const).map(v => (
+                        {(['Day', 'Week', 'Month', 'Agenda'] as const).map(v => (
                             <button
                                 key={v}
                                 onClick={() => onViewModeChange(v)}
                                 className={`flex-shrink-0 px-2 py-1.5 text-[10px] font-medium rounded-md transition-all ${viewMode === v ? 'bg-brand-surface shadow-sm text-brand-text-light' : 'text-brand-text-secondary'}`}
                             >
-                                {v === 'Day' ? 'Hari' : v === 'Week' ? 'Minggu' : v === 'Team' ? 'Tim' : v}
+                                {v === 'Day' ? 'Hari' : v === 'Week' ? 'Minggu' : v === 'Month' ? 'Bulan' : v}
                             </button>
                         ))}
                     </div>
@@ -270,13 +270,13 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({ currentDate, viewMode, 
                     <button onClick={onInfoClick} className="button-secondary px-3 py-1.5 text-sm hidden md:block">Pelajari Halaman Ini</button>
                     <button onClick={onToday} className="button-secondary px-3 py-1.5 text-sm">Hari Ini</button>
                     <div className="p-1 bg-brand-bg rounded-lg flex">
-                        {(['Day', 'Week', 'Month', 'Team', 'Agenda'] as const).map(v => (
+                        {(['Day', 'Week', 'Month', 'Agenda'] as const).map(v => (
                             <button
                                 key={v}
                                 onClick={() => onViewModeChange(v)}
                                 className={`px-3 py-1 text-sm font-medium rounded-md ${viewMode === v ? 'bg-brand-surface shadow-sm' : 'text-brand-text-secondary'}`}
                             >
-                                {v === 'Day' ? 'Hari' : v === 'Week' ? 'Minggu' : v === 'Team' ? 'Tim' : v}
+                                {v === 'Day' ? 'Hari' : v === 'Week' ? 'Minggu' : v === 'Month' ? 'Bulan' : v}
                             </button>
                         ))}
                     </div>
@@ -432,6 +432,169 @@ const AgendaView: React.FC<AgendaViewProps> = ({ agendaByDate, profile, onEventC
         {agendaByDate.length === 0 && <p className="text-center text-brand-text-secondary py-16">Tidak ada Acara Pernikahan mendatang.</p>}
     </div>
 );
+
+
+interface TableViewProps {
+    events: Project[];
+    profile: Profile;
+    onEventClick: (event: Project) => void;
+}
+
+const TableView: React.FC<TableViewProps> = ({ events, profile, onEventClick }) => {
+    const sortedEvents = useMemo(() => {
+        return [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [events]);
+
+    return (
+        <div className="p-4 md:p-6 lg:p-10 flex-grow custom-scrollbar overflow-x-auto bg-brand-surface/30">
+            <div className="min-w-full inline-block align-middle">
+                <div className="overflow-hidden border border-brand-border/40 rounded-2xl shadow-sm glass-card">
+                    <table className="min-w-full divide-y divide-brand-border/30">
+                        <thead className="bg-brand-bg/50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider">Tanggal</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider">Acara Pernikahan</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider">Jenis</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider">Subjek / Pengantin</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider border-none">Lokasi</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider border-none">Tim</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-brand-text-secondary uppercase tracking-wider border-none">Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white/40 divide-y divide-brand-border/20">
+                            {sortedEvents.map((event) => {
+                                const bgColor = getEventColor(event, profile);
+                                const isInternal = event.clientId === 'INTERNAL';
+                                return (
+                                    <tr 
+                                        key={event.id} 
+                                        onClick={() => onEventClick(event)}
+                                        className="hover:bg-brand-accent/5 cursor-pointer transition-colors animate-fade-in group"
+                                    >
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-brand-text-light">
+                                            {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 rounded-full shadow-sm shrink-0" style={{ backgroundColor: bgColor }}></div>
+                                                <span className="text-sm font-bold text-brand-text-light group-hover:text-brand-accent transition-colors">{event.projectName}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm" style={{ backgroundColor: `${bgColor}20`, color: bgColor }}>
+                                                {event.projectType}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-brand-text-secondary">
+                                            {isInternal ? <span className="italic opacity-60">Internal</span> : (event.clientName || '-')}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-brand-text-secondary truncate max-w-[150px]">
+                                            {event.location || '-'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex -space-x-1.5">
+                                                {event.team?.slice(0, 3).map((t, idx) => (
+                                                    <div 
+                                                        key={idx} 
+                                                        className="w-6 h-6 rounded-full bg-brand-accent/10 border-2 border-white flex items-center justify-center text-[8px] font-extrabold text-brand-accent shadow-sm"
+                                                        title={t.name}
+                                                    >
+                                                        {getInitials(t.name)}
+                                                    </div>
+                                                ))}
+                                                {(event.team?.length || 0) > 3 && (
+                                                    <div className="w-6 h-6 rounded-full bg-brand-bg border-2 border-white flex items-center justify-center text-[8px] font-bold text-brand-text-secondary shadow-sm">
+                                                        +{(event.team?.length || 0) - 3}
+                                                    </div>
+                                                )}
+                                                {(!event.team || event.team.length === 0) && (
+                                                    <span className="text-[10px] text-brand-text-secondary opacity-30 italic">-</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-brand-text-primary">
+                                            {event.startTime ? `${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''}` : 'Sepanjang Hari'}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                    {sortedEvents.length === 0 && (
+                        <div className="text-center py-20 bg-white/40">
+                            <CalendarIcon className="w-12 h-12 text-brand-text-secondary/30 mx-auto mb-4" />
+                            <p className="text-sm text-brand-text-secondary">Tidak ada data agenda yang ditemukan.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- COMPACT AGENDA TABLE FOR TOP OF CALENDAR ---
+interface CompactAgendaTableProps {
+    events: Project[];
+    profile: Profile;
+    onEventClick: (event: Project) => void;
+}
+
+const CompactAgendaTable: React.FC<CompactAgendaTableProps> = ({ events, profile, onEventClick }) => {
+    const nextEvents = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return [...events]
+            .filter(e => new Date(e.date) >= today)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 5);
+    }, [events]);
+
+    if (nextEvents.length === 0) return null;
+
+    return (
+        <div className="px-4 py-3 md:px-6 md:py-4 bg-brand-bg/20 border-b border-brand-border/30">
+            <div className="flex items-center justify-between mb-3 px-1">
+                <div className="flex items-center gap-2">
+                    <CalendarIcon className="w-4 h-4 text-brand-accent" />
+                    <h4 className="text-xs font-bold text-brand-text-light uppercase tracking-widest">Ringkasan Agenda Mendatang</h4>
+                </div>
+                <span className="text-[10px] font-medium text-brand-text-secondary bg-white/50 px-2 py-0.5 rounded-full border border-brand-border/20">5 Acara Terdekat</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                {nextEvents.map(event => {
+                    const bgColor = getEventColor(event, profile);
+                    const isInternal = event.clientId === 'INTERNAL';
+                    return (
+                        <div 
+                            key={event.id}
+                            onClick={() => onEventClick(event)}
+                            className="p-3 rounded-xl bg-white/60 backdrop-blur-md border border-brand-border/30 shadow-sm hover:shadow-md hover:border-brand-accent/30 transition-all cursor-pointer group flex flex-col justify-between"
+                        >
+                            <div className="flex items-start justify-between mb-2">
+                                <span className="text-[10px] font-bold text-brand-accent">
+                                    {new Date(event.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                </span>
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bgColor }}></div>
+                            </div>
+                            <h5 className="text-xs font-bold text-brand-text-light group-hover:text-brand-accent transition-colors truncate mb-1" title={event.projectName}>
+                                {event.projectName}
+                            </h5>
+                            <div className="flex items-center justify-between mt-1">
+                                <span className="text-[9px] font-medium text-brand-text-secondary truncate max-w-[70%]">
+                                    {isInternal ? 'Internal' : (event.clientName || event.projectType)}
+                                </span>
+                                <span className="text-[8px] font-bold text-brand-text-primary">
+                                    {event.startTime || 'Harian'}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 
 interface WeekViewProps {
@@ -922,14 +1085,9 @@ export const CalendarView: React.FC<CalendarViewProps> = (props) => {
         queryClient.invalidateQueries({ queryKey: ['projects'] });
     };
 
-    if (isProfileLoading || !qProfile) {
-        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Kalender...</div>;
-    }
-
-
-    // STATE
+    // STATE - Moved above conditional return to follow Rules of Hooks
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'Day' | 'Week' | 'Month' | 'Team' | 'Agenda'>('Month');
+    const [viewMode, setViewMode] = useState<'Day' | 'Week' | 'Month' | 'Agenda'>('Month');
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<Project | null>(null);
     const [panelMode, setPanelMode] = useState<'detail' | 'edit'>('detail');
@@ -1119,6 +1277,19 @@ export const CalendarView: React.FC<CalendarViewProps> = (props) => {
         return map;
     }, [filteredEvents]);
 
+    const filteredEventsThisMonth = useMemo(() => {
+        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        return filteredEvents.filter(e => {
+            const d = new Date(e.date);
+            return d >= monthStart && d <= monthEnd;
+        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [filteredEvents, currentDate]);
+
+    if (isProfileLoading || !qProfile) {
+        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Kalender...</div>;
+    }
+
     // HANDLERS
     const handleOpenPanelForAdd = (date: Date) => {
         setSelectedEvent(null);
@@ -1280,6 +1451,56 @@ export const CalendarView: React.FC<CalendarViewProps> = (props) => {
 
             <div className="flex-1 flex flex-row overflow-hidden">
                 <div className="flex-1 flex flex-col overflow-y-auto">
+                    {/* Ringkasan Agenda Mendatang (Very top summary) */}
+                    {(viewMode === 'Day' || viewMode === 'Week' || viewMode === 'Month') && (
+                        <CompactAgendaTable 
+                            events={filteredEvents}
+                            profile={profile}
+                            onEventClick={handleOpenPanelForEdit}
+                        />
+                    )}
+
+                    {/* DEDICATED TABLE SECTION (Now syncs with month) */}
+                    <div className="mt-8 p-1 px-4 md:px-6">
+                        <div className="flex items-center justify-between mb-6 p-4 bg-brand-bg/40 rounded-2xl border border-brand-border/30 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <CalendarIcon className="w-5 h-5 text-brand-accent" />
+                                <h3 className="text-lg font-bold text-brand-text-light uppercase tracking-widest">
+                                    Agenda {currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                </h3>
+                            </div>
+                            <span className="text-xs font-bold text-brand-text-secondary">
+                                {filteredEventsThisMonth.length} Acara
+                            </span>
+                        </div>
+                        <div className="glass-card rounded-2xl overflow-hidden border border-brand-border/40 shadow-xl mb-12">
+                            <TableView
+                                events={filteredEventsThisMonth}
+                                profile={profile}
+                                onEventClick={handleOpenPanelForEdit}
+                            />
+                        </div>
+                    </div>
+
+                    {/* DEDICATED TEAM SECTION (Now moved up) */}
+                    <div className="mt-4 p-1 px-4 md:px-6 mb-12">
+                        <div className="flex items-center gap-3 mb-6 p-4 bg-brand-bg/40 rounded-2xl border border-brand-border/30 shadow-sm">
+                            <UsersIcon className="w-5 h-5 text-brand-accent" />
+                            <h3 className="text-lg font-bold text-brand-text-light uppercase tracking-widest">Jadwal Anggota Tim</h3>
+                        </div>
+                        <div className="glass-card rounded-2xl overflow-hidden border border-brand-border/40 shadow-xl min-h-[500px]">
+                            <TeamView
+                                currentDate={currentDate}
+                                eventsByDate={eventsByDate}
+                                teamMembers={teamMembers}
+                                profile={profile}
+                                isLoading={isLoadingEvents}
+                                onEventClick={handleOpenPanelForEdit}
+                            />
+                        </div>
+                    </div>
+
+                    {/* CALENDAR CONTROLS AND GRID (Now moved to bottom) */}
                     <CalendarHeader
                         currentDate={currentDate}
                         viewMode={viewMode}
@@ -1314,8 +1535,10 @@ export const CalendarView: React.FC<CalendarViewProps> = (props) => {
                         onViewModeChange={setViewMode}
                         onInfoClick={() => setIsInfoModalOpen(true)}
                     />
+
                     <div
-                        className="flex-1 calendar-grid-container"
+                        className="calendar-grid-container flex-shrink-0 pb-20"
+                        style={{ height: viewMode === 'Month' ? 'calc(100vh - 12rem)' : '700px' }}
                         onTouchStart={(e) => {
                             const touch = e.touches[0];
                             (e.currentTarget as any).touchStartX = touch.clientX;
@@ -1373,15 +1596,6 @@ export const CalendarView: React.FC<CalendarViewProps> = (props) => {
                                 profile={profile}
                                 isLoading={isLoadingEvents}
                                 onDayClick={handleOpenPanelForAdd}
-                                onEventClick={handleOpenPanelForEdit}
-                            />
-                        ) : viewMode === 'Team' ? (
-                            <TeamView
-                                currentDate={currentDate}
-                                eventsByDate={eventsByDate}
-                                teamMembers={teamMembers}
-                                profile={profile}
-                                isLoading={isLoadingEvents}
                                 onEventClick={handleOpenPanelForEdit}
                             />
                         ) : (

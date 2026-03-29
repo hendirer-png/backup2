@@ -1,14 +1,10 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useApp } from "@/app/AppContext";
-import { useNotifications } from "@/hooks/useNotifications";
-import { ViewType, TransactionType, PaymentStatus, NavigationAction } from "@/types";
-import { DataLoadingWrapper } from "@/shared/ui/LoadingState";
+import { ViewType } from "@/types";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 import { MainLayout } from "@/layouts/MainLayout";
-import { updateProject as updateProjectInDb } from "@/services/projects";
-import { createTransaction, updateCardBalance, updateTransaction as updateTransactionInDb } from "@/services/transactions";
-import { markSubStatusConfirmed } from "@/services/projectSubStatusConfirmations";
-import { updateContract as updateContractInDb } from "@/services/contracts";
+import { PublicLayout } from "@/layouts/PublicLayout";
 
 // Lazy-load route components
 const Homepage = lazy(() => import("@/pages/home/Homepage"));
@@ -17,7 +13,6 @@ const Dashboard = lazy(() => import("@/pages/dashboard/DashboardPage"));
 const Leads = lazy(() => import("@/pages/leads/LeadsPage").then((m) => ({ default: m.Leads })));
 const Booking = lazy(() => import("@/pages/booking/BookingPage"));
 const Clients = lazy(() => import("@/pages/clients/ClientsPage"));
-const Projects = lazy(() => import("@/pages/projects/ProjectsPage").then((m) => ({ default: m.Projects })));
 const Freelancers = lazy(() => import("@/pages/team/TeamPage").then((m) => ({ default: m.Freelancers })));
 const Finance = lazy(() => import("@/pages/finance/FinancePage"));
 const Packages = lazy(() => import("@/features/packages/Packages"));
@@ -27,7 +22,6 @@ const CalendarView = lazy(() => import("@/features/projects/components/CalendarV
 const ClientReports = lazy(() => import("@/features/clients/components/ClientKPI"));
 const ClientPortal = lazy(() => import("@/features/clients/components/ClientPortal"));
 const FreelancerPortal = lazy(() => import("@/features/team/components/FreelancerPortal"));
-const PromoCodes = lazy(() => import("@/features/promo/PromoCodes"));
 const GalleryUpload = lazy(() => import("@/features/public/components/GalleryUpload"));
 const PublicGallery = lazy(() => import("@/features/public/components/PublicGallery"));
 const PublicBookingForm = lazy(() => import("@/features/public/components/PublicBookingForm"));
@@ -41,238 +35,97 @@ const PublicReceipt = lazy(() => import("@/features/public/components/PublicRece
 
 const LAST_ROUTE_STORAGE_KEY = "vena-lastRoute";
 
-const AccessDenied: React.FC<{ onBackToDashboard: () => void }> = ({ onBackToDashboard }) => (
-  <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-6 md:p-8 animate-fade-in">
-    <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center mb-4 sm:mb-6">
-      <img src="/assets/images/backgrounds/errorimg.svg" alt="Akses Ditolak" className="w-full h-full object-contain" />
+const PageLoader = () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6]">
+        <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1A1A1A] mx-auto mb-4"></div>
+            <p className="text-[#4A4A4A] font-medium tracking-widest uppercase text-[10px]">Memuat...</p>
+        </div>
     </div>
-    <h2 className="text-xl sm:text-2xl font-bold text-red-600 mb-2 sm:mb-3">Akses Ditolak</h2>
-    <p className="text-brand-text-secondary mb-6 sm:mb-8 max-w-md leading-relaxed">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
-    <button onClick={onBackToDashboard} className="button-primary">Kembali ke Dashboard</button>
-  </div>
 );
 
-const ROUTE_TO_VIEW: Record<string, ViewType> = {
-    home: ViewType.HOMEPAGE,
-    dashboard: ViewType.DASHBOARD,
-    prospek: ViewType["Calon Pengantin"],
-    booking: ViewType.BOOKING,
-    clients: ViewType.CLIENTS,
-    projects: ViewType.PROJECTS,
-    team: ViewType.TEAM,
-    finance: ViewType.FINANCE,
-    calendar: ViewType.CALENDAR,
-    packages: ViewType.PACKAGES,
-    "promo-codes": ViewType.PROMO_CODES,
-    gallery: ViewType.GALLERY,
-    "pricelist-upload": ViewType.GALLERY,
-    "client-reports": ViewType.CLIENT_REPORTS,
-    settings: ViewType.SETTINGS,
-    kontrak: ViewType.CONTRACTS,
+const AccessDenied: React.FC = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4 sm:p-6 md:p-8 animate-fade-in">
+        <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center mb-4 sm:mb-6">
+            <img src="/assets/images/backgrounds/errorimg.svg" alt="Akses Ditolak" className="w-full h-full object-contain" />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-bold text-red-600 mb-2 sm:mb-3">Akses Ditolak</h2>
+        <p className="text-brand-text-secondary mb-6 sm:mb-8 max-w-md leading-relaxed">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
+        <Navigate to="/dashboard" replace />
+    </div>
+);
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredPermission?: ViewType }> = ({ children, requiredPermission }) => {
+    const { isAuthenticated, currentUser } = useApp();
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, location.pathname + location.search);
+        return <Navigate to="/login" replace />;
+    }
+
+    if (requiredPermission && currentUser?.role !== "Admin") {
+        const hasPermission = currentUser?.permissions?.includes(requiredPermission);
+        if (!hasPermission) return <AccessDenied />;
+    }
+
+    return <MainLayout>{children}</MainLayout>;
 };
 
 export const AppRoutes: React.FC = () => {
-    const { 
-        isAuthenticated, setIsAuthenticated,
-        currentUser, setCurrentUser,
-        activeView, setActiveView, 
-        showNotification,
-        setIsSidebarOpen, setIsSearchOpen,
-        handleLogout 
-    } = useApp();
-
-
-    const [route, setRoute] = useState(window.location.hash || "#/home");
-
-    // Route Parsing and Navigation Logic
-    useEffect(() => {
-        const handleHashChange = () => {
-            const newRoute = window.location.hash || "#/home";
-            setRoute(newRoute);
-
-            const isPublicRoute = newRoute.startsWith("#/public") || 
-                newRoute.startsWith("#/gallery") || newRoute.startsWith("#/feedback") || 
-                newRoute.startsWith("#/suggestion-form") || newRoute.startsWith("#/portal") || 
-                newRoute.startsWith("#/freelancer-portal") || newRoute.startsWith("#/login") || 
-                newRoute === "#/home" || newRoute === "#";
-
-            if (!isAuthenticated && !isPublicRoute) {
-                window.localStorage.setItem(LAST_ROUTE_STORAGE_KEY, newRoute);
-                window.location.hash = "#/login";
-            } else if (isAuthenticated && (newRoute.startsWith("#/login") || newRoute === "#")) {
-                window.location.hash = "#/dashboard";
-            }
-        };
-
-        window.addEventListener("hashchange", handleHashChange);
-        handleHashChange();
-        return () => window.removeEventListener("hashchange", handleHashChange);
-    }, [isAuthenticated]);
-
-    // Active View Sync
-    useEffect(() => {
-        const path = (route.split("?")[0].split("/")[1] || "home").toLowerCase();
-        const mappedView = ROUTE_TO_VIEW[path];
-        if (mappedView) {
-            setActiveView(mappedView);
-        }
-    }, [route, setActiveView]);
-
-    const handleNavigation = (view: ViewType, action?: NavigationAction) => {
-        // action handling moved to individual components using useUIStore if needed
-
-
-        const pathMap: any = {
-            [ViewType.HOMEPAGE]: "home",
-            [ViewType.DASHBOARD]: "dashboard",
-            [ViewType.CLIENTS]: "clients",
-            [ViewType.PROJECTS]: "clients",
-        };
-        const newPath = pathMap[view] || view.toLowerCase().replace(/ /g, "-");
-        window.location.hash = `#/${newPath}`;
-    };
-
-    const hasPermission = (view: ViewType) => {
-        if (!currentUser) return false;
-        if (currentUser.role === "Admin") return true;
-        return currentUser.permissions?.includes(view) || false;
-    };
-
-    const renderView = () => {
-        if (!hasPermission(activeView)) {
-            return <AccessDenied onBackToDashboard={() => setActiveView(ViewType.DASHBOARD)} />;
-        }
-        
-        switch (activeView) {
-            case ViewType.DASHBOARD:
-                return (
-                    <Dashboard />
-
-                );
-
-            case ViewType["Calon Pengantin"]:
-                return <Leads />;
-
-
-            case ViewType.BOOKING:
-                return <Booking />;
-
-
-            case ViewType.CLIENTS:
-            case ViewType.PROJECTS:
-                return (
-                    <Clients />
-
-                );
-
-
-            case ViewType.TEAM:
-                return (
-                    <Freelancers />
-
-                );
-
-
-            case ViewType.FINANCE:
-                return <Finance />;
-
-            case ViewType.PACKAGES:
-                return <Packages />;
-
-            case ViewType.SETTINGS:
-                return <Settings />;
-
-
-            case ViewType.CALENDAR:
-                return <CalendarView />;
-
-
-            case ViewType.CLIENT_REPORTS:
-                return <ClientReports />;
-
-            case ViewType.PROMO_CODES:
-                return <Packages />;
-            case ViewType.GALLERY:
-                return <Packages />;
-
-            case ViewType.CONTRACTS:
-                return (
-                    <Clients />
-
-                );
-
-
-            default:
-                return <div />;
-        }
-    };
-
-    // Public Route logic from App.tsx
-    if (route.startsWith("#/home") || route === "#/" || route === "#") {
-        return <Homepage />;
-    }
-    if (route.startsWith("#/login")) {
-        return <Login onLoginSuccess={(u: any) => {
-            setIsAuthenticated(true);
-            setCurrentUser(u);
-            window.location.hash = "#/dashboard";
-        }} />;
-    }
-
-    if (route.startsWith("#/public-packages")) {
-        return <PublicPackages />;
-
-    }
-    if (route.startsWith("#/public-booking")) {
-        return <PublicBookingForm />;
-
-    }
-    if (route.startsWith("#/public-lead-form")) {
-        return <PublicLeadForm />;
-
-    }
-
-    if (route.startsWith("#/feedback")) return <PublicFeedbackForm />;
-    if (route.startsWith("#/suggestion-form")) return <SuggestionForm />;
-
-    if (route.startsWith("#/test-signature")) return <TestSignature />;
-    if (route.startsWith("#/gallery/")) {
-        const id = route.split("/")[2];
-        return <PublicGallery galleryId={id} />;
-    }
-    if (route.startsWith("#/portal/invoice/")) {
-        return <Suspense fallback={<div>Loading...</div>}><PublicInvoice projectId={route.split("/portal/invoice/")[1] || ""} /></Suspense>;
-    }
-    if (route.startsWith("#/portal/receipt/")) {
-        return <Suspense fallback={<div>Loading...</div>}><PublicReceipt transactionId={route.split("/portal/receipt/")[1] || ""} /></Suspense>;
-    }
-    if (route.startsWith("#/portal/")) {
-        const raw = route.split("/portal/")[1] || "";
-        const accessId = decodeURIComponent((raw.split(/[?#]/)[0] || "").split("/")[0] || "").trim();
-        return <ClientPortal accessId={accessId} />;
-
-    }
-    if (route.startsWith("#/freelancer-portal/")) {
-        const raw = route.split("/freelancer-portal/")[1] || "";
-        const accessId = decodeURIComponent((raw.split(/[?#]/)[0] || "").split("/")[0] || "").trim();
-        return <FreelancerPortal accessId={accessId} />;
-
-    }
-
-    if (!isAuthenticated) return <Login onLoginSuccess={(u: any) => {
-        setIsAuthenticated(true);
-        setCurrentUser(u);
-        window.location.hash = "#/dashboard";
-    }} />;
-
+    const { isAuthenticated, setIsAuthenticated, setCurrentUser } = useApp();
 
     return (
-        <MainLayout>
-            <ErrorBoundary fallback={<div>Gagal memuat komponen.</div>}>
-                <Suspense fallback={<div>Loading...</div>}>
-                    {renderView()}
-                </Suspense>
-            </ErrorBoundary>
-        </MainLayout>
+        <ErrorBoundary fallback={<div>Gagal memuat komponen.</div>}>
+            <Suspense fallback={<PageLoader />}>
+                <Routes>
+                    {/* Public Routes with Shared Layout */}
+                    <Route element={<PublicLayout />}>
+                        <Route path="/public-packages" element={<PublicPackages />} />
+                        <Route path="/public-booking" element={<PublicBookingForm />} />
+                        <Route path="/public-lead-form" element={<PublicLeadForm />} />
+                        <Route path="/feedback" element={<PublicFeedbackForm />} />
+                        <Route path="/suggestion-form" element={<SuggestionForm />} />
+                    </Route>
+
+                    {/* Specialized Public Routes (No shared layout) */}
+                    <Route path="/" element={<Homepage />} />
+                    <Route path="/home" element={<Homepage />} />
+                    <Route path="/login" element={
+                        isAuthenticated ? <Navigate to="/dashboard" replace /> : 
+                        <Login onLoginSuccess={(u: any) => {
+                            setIsAuthenticated(true);
+                            setCurrentUser(u);
+                        }} />
+                    } />
+                    
+                    <Route path="/gallery/:id" element={<PublicGallery />} />
+                    <Route path="/portal/invoice/:projectId" element={<PublicInvoice />} />
+                    <Route path="/portal/receipt/:transactionId" element={<PublicReceipt />} />
+                    <Route path="/portal/:accessId" element={<ClientPortal />} />
+                    <Route path="/freelancer-portal/:accessId" element={<FreelancerPortal />} />
+                    <Route path="/test-signature" element={<TestSignature />} />
+
+                    {/* Dashboard Routes (Protected) */}
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/prospek" element={<ProtectedRoute requiredPermission={ViewType["Calon Pengantin"]}><Leads /></ProtectedRoute>} />
+                    <Route path="/booking" element={<ProtectedRoute requiredPermission={ViewType.BOOKING}><Booking /></ProtectedRoute>} />
+                    <Route path="/clients" element={<ProtectedRoute requiredPermission={ViewType.CLIENTS}><Clients /></ProtectedRoute>} />
+                    <Route path="/projects" element={<ProtectedRoute requiredPermission={ViewType.PROJECTS}><Clients /></ProtectedRoute>} />
+                    <Route path="/team" element={<ProtectedRoute requiredPermission={ViewType.TEAM}><Freelancers /></ProtectedRoute>} />
+                    <Route path="/finance" element={<ProtectedRoute requiredPermission={ViewType.FINANCE}><Finance /></ProtectedRoute>} />
+                    <Route path="/packages" element={<ProtectedRoute requiredPermission={ViewType.PACKAGES}><Packages /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute requiredPermission={ViewType.SETTINGS}><Settings /></ProtectedRoute>} />
+                    <Route path="/calendar" element={<ProtectedRoute requiredPermission={ViewType.CALENDAR}><CalendarView /></ProtectedRoute>} />
+                    <Route path="/client-reports" element={<ProtectedRoute requiredPermission={ViewType.CLIENT_REPORTS}><ClientReports /></ProtectedRoute>} />
+                    <Route path="/promo-codes" element={<ProtectedRoute requiredPermission={ViewType.PROMO_CODES}><Packages /></ProtectedRoute>} />
+                    <Route path="/gallery" element={<ProtectedRoute requiredPermission={ViewType.GALLERY}><Packages /></ProtectedRoute>} />
+                    <Route path="/kontrak" element={<ProtectedRoute requiredPermission={ViewType.CONTRACTS}><Clients /></ProtectedRoute>} />
+
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </Suspense>
+        </ErrorBoundary>
     );
 };

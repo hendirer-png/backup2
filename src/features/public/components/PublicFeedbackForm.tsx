@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ClientFeedback, SatisfactionLevel } from '@/types';
 import { StarIcon } from '@/constants';
 import { createClientFeedback } from '@/services/clientFeedback';
@@ -62,7 +63,7 @@ const PublicFeedbackForm: React.FC = () => {
                 <div className="w-full max-w-lg p-8 text-center bg-brand-surface rounded-2xl shadow-lg border border-brand-border">
                     <h1 className="text-2xl font-bold text-gradient">Terima Kasih!</h1>
                     <p className="mt-4 text-brand-text-primary">Saran dan masukan Anda sangat berharga bagi kami. Tim kami akan segera meninjaunya untuk menjadi lebih baik lagi.</p>
-                    <a href="#" className="mt-6 button-primary inline-block">Kembali ke Beranda</a>
+                    <Link to="/" className="mt-6 button-primary inline-block">Kembali ke Beranda</Link>
                 </div>
             </div>
         );

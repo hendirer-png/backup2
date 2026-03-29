@@ -1,13 +1,12 @@
-interface PortalProps {
-    accessId: string;
-    showNotification?: (message: string, duration?: number) => void;
-}
+import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 
+const FreelancerPortal: React.FC = () => {
+    const { accessId } = useParams<{ accessId: string }>();
 
-export const FreelancerPortal: React.FC<PortalProps> = ({ 
-    accessId, 
-    showNotification
-}) => {
+    useEffect(() => {
+        console.log("Page Loaded: Freelancer Portal", accessId);
+    }, [accessId]);
 
     return (
         <div className="p-8 text-center">

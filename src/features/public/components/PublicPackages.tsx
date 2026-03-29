@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode } from '@/types';
 import { useApp } from "@/app/AppContext";
 import Modal from '@/shared/ui/Modal';
@@ -73,6 +74,9 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
         showNotification: contextShowNotification 
     } = useApp();
 
+    const [searchParams] = useSearchParams();
+    const regionParam = searchParams.get('region');
+
     const initialUserProfile = props.userProfile;
     const showNotification = props.showNotification || contextShowNotification;
     const { setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes } = props;
@@ -127,27 +131,19 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
         loadData();
     }, []);
 
-    // Parse region from URL hash and listen for changes
+    // Parse region from URL parameters
     useEffect(() => {
-        const handleHashChange = () => {
-            const hash = window.location.hash;
-            if (hash.includes('?')) {
-                const urlParams = new URLSearchParams(hash.substring(hash.indexOf('?')));
-                const regionParam = urlParams.get('region');
-                if (regionParam) {
-                    const normalizedRegion = regionParam.toLowerCase();
-                    setSelectedRegion(normalizedRegion);
-                    if (import.meta.env.DEV) {
-                        console.log('Region selected from URL change (PublicPackages):', normalizedRegion);
-                    }
-                }
+        console.log("Page Loaded: Public Packages", regionParam);
+        if (regionParam) {
+            const normalizedRegion = regionParam.toLowerCase();
+            setSelectedRegion(normalizedRegion);
+            if (import.meta.env.DEV) {
+                console.log('Region selected from URL parameter (PublicPackages):', normalizedRegion);
             }
-        };
-
-        window.addEventListener('hashchange', handleHashChange);
-        handleHashChange();
-        return () => window.removeEventListener('hashchange', handleHashChange);
-    }, []);
+        } else {
+            setSelectedRegion(null);
+        }
+    }, [regionParam]);
     const template = userProfile?.publicPageConfig?.template ?? 'modern';
     const visiblePackages = useMemo(() => {
         if (!selectedRegion) return packages;
@@ -543,47 +539,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
                 }
             `}</style>
                 
-                {/* Minimalist Navigation */}
-                <nav className="sticky top-0 z-50 bg-[#FAF9F6]/80 backdrop-blur-xl border-b border-black/5 py-4 px-6 md:px-12 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        {userProfile.logoBase64 ? (
-                            <img src={userProfile.logoBase64} alt="Logo" className="h-8 md:h-10 object-contain" />
-                        ) : (
-                            <span className="text-xl font-black tracking-tighter uppercase">{userProfile.companyName}</span>
-                        )}
-                    </div>
-                    {userProfile.phone && (
-                        <a 
-                            href={`https://wa.me/${cleanPhoneNumber(userProfile.phone)}`} 
-                            className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors"
-                        >
-                            Contact
-                        </a>
-                    )}
-                </nav>
-
-                <div className="w-full max-w-7xl mx-auto py-16 md:py-24 px-6 md:px-12">
-                    <header className="text-center mb-24 md:mb-32 max-w-4xl mx-auto hero-reveal">
-                        <div className="inline-block px-4 py-1.5 rounded-full bg-[#B69255]/10 text-[#B69255] text-[10px] md:text-xs font-black tracking-[0.2em] uppercase mb-8">
-                            Photography & Film {selectedRegion && `• ${selectedRegion}`}
-                        </div>
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-                            {userProfile?.publicPageConfig?.title || userProfile?.companyName}
-                        </h1>
-                        {userProfile?.publicPageConfig?.introduction && (
-                            <p className="text-lg md:text-xl text-[#666666] leading-relaxed max-w-3xl mx-auto font-medium">
-                                {userProfile.publicPageConfig.introduction}
-                            </p>
-                        )}
-                        <div className="mt-12">
-                            <button 
-                                onClick={() => document.getElementById('packages-section')?.scrollIntoView({ behavior: 'smooth' })}
-                                className="premium-button px-10 py-5 rounded-2xl font-bold tracking-wide shadow-2xl shadow-black/10 hover:scale-105 active:scale-95 transition-all duration-300"
-                            >
-                                Jelajahi Package
-                            </button>
-                        </div>
-                    </header>
+                <div className="w-full max-w-7xl mx-auto py-16 md:py-8 px-6 md:px-12">
 
                     {userProfile?.publicPageConfig?.galleryImages && userProfile.publicPageConfig.galleryImages.length > 0 && (
                         <section className="mb-32 hero-reveal" style={{ animationDelay: '200ms' }}>

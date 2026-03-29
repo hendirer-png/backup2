@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Profile, LeadStatus, ContactChannel } from '@/types';
 import { useApp } from "@/app/AppContext";
 import { createLead } from '@/services/leads';
@@ -11,6 +12,7 @@ interface PublicLeadProps {
 
 const PublicLeadForm: React.FC<PublicLeadProps> = (props) => {
     const { showNotification: contextShowNotification } = useApp();
+    const navigate = useNavigate();
     const userProfile = props.userProfile || ({} as Profile);
     const showNotification = props.showNotification || contextShowNotification;
 
@@ -56,6 +58,7 @@ const PublicLeadForm: React.FC<PublicLeadProps> = (props) => {
 
 
     React.useEffect(() => {
+        console.log("Page Loaded: Public Lead Form");
         if (userProfile.companyName) {
             document.title = `Inquiry | ${userProfile.companyName}`;
         }
