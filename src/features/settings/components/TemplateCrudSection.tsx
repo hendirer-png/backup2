@@ -59,7 +59,7 @@ export const TemplateCrudSection: React.FC<TemplateCrudSectionProps> = ({
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-brand-bg/50 p-4 rounded-2xl border border-brand-border">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-brand-border shadow-sm">
                 <div className="flex items-start gap-4">
                     <div className={`flex-shrink-0 w-12 h-12 rounded-2xl ${accentClass} flex items-center justify-center shadow-lg shadow-black/10`}>
                         {icon}
@@ -114,7 +114,7 @@ export const TemplateCrudSection: React.FC<TemplateCrudSectionProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {templates.map((t) => (
-                    <div key={t.id} className="group bg-brand-bg/40 border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-all flex flex-col h-full">
+                    <div key={t.id} className="group bg-white border border-brand-border rounded-2xl p-5 hover:border-brand-accent/50 transition-all shadow-sm flex flex-col h-full">
                         <div className="flex justify-between items-start mb-3">
                             <h5 className="font-bold text-brand-text-light group-hover:text-brand-accent transition-colors">{t.title}</h5>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -122,7 +122,7 @@ export const TemplateCrudSection: React.FC<TemplateCrudSectionProps> = ({
                                 <button onClick={() => onDelete(t.id)} className="p-2 text-brand-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"><Trash2Icon className="w-4 h-4" /></button>
                             </div>
                         </div>
-                        <div className="bg-black/20 rounded-xl p-3 flex-grow mb-3">
+                        <div className="bg-brand-bg/40 border border-brand-border/40 rounded-xl p-4 flex-grow mb-4">
                             <p className="text-xs text-brand-text-secondary line-clamp-3 whitespace-pre-wrap leading-relaxed">{t.template}</p>
                         </div>
                         <button onClick={() => onPreviewToggle(t.id)} className={`w-full py-2 rounded-xl text-[10px] font-bold transition-all border ${previewId === t.id ? 'bg-brand-accent text-white border-brand-accent' : 'bg-transparent text-brand-text-secondary border-brand-border hover:border-brand-text-secondary'}`}>

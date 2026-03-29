@@ -2,7 +2,6 @@ import React from 'react';
 import { Profile, Project } from '@/types';
 import { CategoryManager } from '@/features/settings/components/CategoryManager';
 import { ProjectStatusManager } from '@/features/settings/components/ProjectStatusManager';
-import { ChecklistTemplateSettings } from '@/features/settings/components/ChecklistTemplateSettings';
 import { DEFAULT_STATUS_CONFIG } from '@/features/settings/utils/settings.utils';
 import CollapsibleSection from '@/shared/ui/CollapsibleSection';
 import { PackageIcon, CalendarIcon, ListIcon, CheckSquareIcon } from '@/constants';
@@ -92,15 +91,6 @@ export const ProjectSettingsTab: React.FC<ProjectSettingsTabProps> = ({
                     projects={projects} profile={profile}
                     onAddDefaultStatuses={() => confirm('Gunakan status default?') && handleCategoryUpdate('projectStatusConfig', DEFAULT_STATUS_CONFIG as any)}
                 />
-            </CollapsibleSection>
-
-            <CollapsibleSection 
-                title="Template Checklist Pelanggan" 
-                defaultExpanded={true} 
-                variant="filled"
-                icon={<CheckSquareIcon className="w-4 h-4" />}
-            >
-                <ChecklistTemplateSettings profile={profile} setProfile={setProfile} showNotification={showNotification} />
             </CollapsibleSection>
         </div>
     );

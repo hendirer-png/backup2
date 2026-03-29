@@ -8,7 +8,7 @@ import { LeadForm } from '@/features/leads/components/LeadForm';
 import { ConvertLeadForm } from '@/features/leads/components/ConvertLeadForm';
 import { LeadFilterBar } from '@/features/leads/components/LeadFilterBar';
 import { LeadKanban } from '@/features/leads/components/LeadKanban';
-import { ShareMessageModal } from '@/features/leads/components/ShareMessageModal';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useLeads } from '@/features/leads/api/useLeadsQueries';
@@ -220,13 +220,19 @@ export const LeadsPage: React.FC<LeadsPageProps> = (props) => {
 
             {/* WhatsApp Share Template Modal */}
             {shareModalState && (
-                <ShareMessageModal
-                    type={shareModalState.type}
-                    lead={shareModalState.lead}
-                    userProfile={userProfile}
-                    publicBookingFormUrl={publicBookingFormUrl}
-                    publicPackagesUrl={publicPackagesUrl}
+                <UniversalShareModal
+                    isOpen={!!shareModalState}
                     onClose={() => setShareModalState(null)}
+                    type={shareModalState.type === 'package' ? 'packageShareTemplate' : 'bookingFormTemplate'}
+                    profile={userProfile}
+                    variables={{
+                        '{leadName}': shareModalState.lead.name,
+                        '{companyName}': userProfile.companyName,
+                        '{packageLink}': publicPackagesUrl,
+                        '{bookingFormLink}': `${publicBookingFormUrl}?leadId=${shareModalState.lead.id}`
+                    }}
+                    phone={shareModalState.lead.whatsapp}
+                    title={shareModalState.type === 'package' ? `Bagikan Katalog ke ${shareModalState.lead.name}` : `Kirim Form Booking ke ${shareModalState.lead.name}`}
                     showNotification={showNotification}
                     setProfile={setProfile}
                 />

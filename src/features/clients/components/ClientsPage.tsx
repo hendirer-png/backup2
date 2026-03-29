@@ -38,7 +38,7 @@ import ProjectDetailModal from '@/features/projects/components/ProjectDetailModa
 import QuickStatusModal from '@/features/projects/components/QuickStatusModal';
 import BriefingModal from '@/features/projects/components/BriefingModal';
 import ChatModal from '@/features/communication/components/ChatModal';
-import ShareMessageModal from '@/features/communication/components/ShareMessageModal';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
 import Contracts from '@/pages/contracts/ContractsPage';
 
 export interface ClientsProps {
@@ -188,7 +188,8 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
         isBillingModalOpen, handleOpenBilling, handleCloseBilling,
         qrModalContent, handleCloseQrModal, handleDownloadQr, handleShareWhatsApp,
         isBookingFormShareModalOpen, handleOpenBookingModal, handleCloseBookingModal,
-        bookingFormUrl, handleCopyBookingLink
+        bookingFormUrl, handleCopyBookingLink,
+        sharePortalContent, setSharePortalContent
     } = useClientsPage({
         showNotification,
     });
@@ -514,12 +515,13 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
             )}
 
             {projectActions.sharePreview && (
-                <ShareMessageModal
+                <UniversalShareModal
                     isOpen={!!projectActions.sharePreview}
                     onClose={() => projectActions.setSharePreview(null)}
                     title={projectActions.sharePreview.title}
                     initialMessage={projectActions.sharePreview.message}
                     phone={projectActions.sharePreview.phone}
+                    profile={userProfile}
                     showNotification={showNotification}
                 />
             )}
@@ -532,6 +534,22 @@ export const ClientsPage: React.FC<ClientsProps> = (props) => {
                     client={projectActions.chatModalData.client}
                     onSendMessage={() => { }}
                     userProfile={userProfile}
+                />
+            )}
+            {sharePortalContent && (
+                <UniversalShareModal
+                    isOpen={!!sharePortalContent}
+                    onClose={() => setSharePortalContent(null)}
+                    type="portalShareTemplate"
+                    profile={userProfile}
+                    variables={{
+                        '{clientName}': sharePortalContent.client.name,
+                        '{companyName}': userProfile.companyName,
+                        '{portalLink}': sharePortalContent.url
+                    }}
+                    phone={sharePortalContent.client.whatsapp || sharePortalContent.client.phone}
+                    title="Bagikan Portal Pengantin"
+                    showNotification={showNotification}
                 />
             )}
         </div>

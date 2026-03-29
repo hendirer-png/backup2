@@ -90,6 +90,7 @@ export const useClientsPage = ({
     const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
     const [qrModalContent, setQrModalContent] = useState<{ title: string; url: string; clientName: string; clientPhone?: string } | null>(null);
     const [isBookingFormShareModalOpen, setIsBookingFormShareModalOpen] = useState(false);
+    const [sharePortalContent, setSharePortalContent] = useState<{ client: Client; url: string } | null>(null);
 
     // --- Filters & Sort ---
     const [searchQuery, setSearchQuery] = useState('');
@@ -425,8 +426,7 @@ export const useClientsPage = ({
 
     const handleSharePortal = (client: Client) => {
         const url = `${window.location.origin}/#/portal/${client.portalAccessId}`;
-        const msg = encodeURIComponent(`Halo ${client.name}, berikut adalah link portal pengantin Anda: ${url}`);
-        window.open(`https://wa.me/${client.phone || client.whatsapp}?text=${msg}`, '_blank');
+        setSharePortalContent({ client, url });
     };
 
     const handleDeleteProject = async (projectId: string) => {
@@ -478,6 +478,7 @@ export const useClientsPage = ({
         isBillingModalOpen, handleOpenBilling, handleCloseBilling,
         qrModalContent, handleCloseQrModal, handleDownloadQr, handleShareWhatsApp,
         isBookingFormShareModalOpen, handleOpenBookingModal, handleCloseBookingModal,
-        bookingFormUrl, handleCopyBookingLink
+        bookingFormUrl, handleCopyBookingLink,
+        sharePortalContent, setSharePortalContent
     };
 };

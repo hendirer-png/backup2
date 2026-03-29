@@ -1,4 +1,4 @@
-import { DEFAULT_PACKAGE_SHARE_TEMPLATE, DEFAULT_BOOKING_FORM_TEMPLATE, DEFAULT_INVOICE_SHARE_TEMPLATE, DEFAULT_RECEIPT_SHARE_TEMPLATE, DEFAULT_EXPENSE_SHARE_TEMPLATE, DEFAULT_PORTAL_SHARE_TEMPLATE } from '@/constants';
+import { DEFAULT_PACKAGE_SHARE_TEMPLATE, DEFAULT_BOOKING_FORM_TEMPLATE, DEFAULT_INVOICE_SHARE_TEMPLATE, DEFAULT_RECEIPT_SHARE_TEMPLATE, DEFAULT_EXPENSE_SHARE_TEMPLATE, DEFAULT_PORTAL_SHARE_TEMPLATE, DEFAULT_CONTRACT_SHARE_TEMPLATE, DEFAULT_BILLING_SHARE_TEMPLATE } from '@/constants';
 import { ShareTemplateConfig, TemplateVariable } from '@/features/settings/types';
 
 export const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -130,6 +130,31 @@ export const SHARE_TEMPLATE_CONFIGS: readonly ShareTemplateConfig[] = [
             { label: '{clientName}', desc: 'Nama pengantin' },
             { label: '{companyName}', desc: 'Nama perusahaan' },
             { label: '{portalLink}', desc: 'Link portal pengantin' },
+        ],
+    },
+    {
+        key: 'contractShareTemplate',
+        label: 'Kirim Kontrak Digital',
+        desc: 'Digunakan saat mengirim link Kontrak Digital ke klien untuk ditandatangani.',
+        icon: '🖋️', color: 'indigo', placeholder: 'Tulis template pesan untuk mengirim kontrak...', defaultValue: DEFAULT_CONTRACT_SHARE_TEMPLATE,
+        variables: [
+            { label: '{clientName}', desc: 'Nama pengantin' },
+            { label: '{companyName}', desc: 'Nama perusahaan' },
+            { label: '{contractLink}', desc: 'Link kontrak digital' },
+        ],
+    },
+    {
+        key: 'billingShareTemplate',
+        label: 'Kirim Penagihan Pembayaran',
+        desc: 'Digunakan saat mengirim rincian tagihan dan instruksi pembayaran.',
+        icon: '🏦', color: 'amber', placeholder: 'Tulis template pesan untuk menagih pembayaran...', defaultValue: DEFAULT_BILLING_SHARE_TEMPLATE,
+        variables: [
+            { label: '{clientName}', desc: 'Nama pengantin' },
+            { label: '{companyName}', desc: 'Nama perusahaan' },
+            { label: '{projectDetails}', desc: 'Rincian acara & tagihan' },
+            { label: '{totalDue}', desc: 'Total sisa tagihan' },
+            { label: '{portalLink}', desc: 'Link portal pengantin' },
+            { label: '{bankAccount}', desc: 'Informasi rekening bank' },
         ],
     },
 ];

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Transaction, Profile, Project, Client, TransactionType } from '@/types';
-import { DownloadIcon, Share2Icon, PencilIcon } from '@/constants';
 import Modal from '@/shared/ui/Modal';
 import SignaturePad from '@/shared/ui/SignaturePad';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
+import { DownloadIcon, PencilIcon, WhatsappIcon, Share2Icon } from '@/constants';
 
 interface ReceiptPreviewModalProps {
     isOpen: boolean;
@@ -26,6 +27,8 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
     onSign
 }) => {
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    
     if (!isOpen) return null;
 
     const isExpense = transaction.type === TransactionType.EXPENSE;
@@ -89,25 +92,7 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
         }
     };
 
-    const handleShareWA = () => {
-        const portalUrl = `${window.location.origin}/#/portal/receipt/${transaction.id}`;
-        
-        let message = `Halo ${targetName},\n\n`;
-        message += `Berikut adalah Tanda Terima pembayaran sebesar Rp ${transaction.amount.toLocaleString('id-ID')}.\n`;
-        message += `Keterangan: ${transaction.description}\n`;
-        message += `Tanggal: ${formatDate(transaction.date)}\n`;
-        message += `\nAnda dapat melihat detail tanda terima melalui link berikut:\n${portalUrl}\n\n`;
-        message += `Terima kasih,\n${profile.companyName}`;
-        
-        const encodedMessage = encodeURIComponent(message);
-        
-        const phone = client?.phone ? client.phone.replace(/\D/g, '') : '';
-        const whatsappUrl = phone 
-            ? `https://wa.me/${phone}?text=${encodedMessage}` 
-            : `https://wa.me/?text=${encodedMessage}`;
-            
-        window.open(whatsappUrl, '_blank');
-    };
+    const portalUrl = `${window.location.host === 'localhost:3000' ? 'http://localhost:3000' : 'https://vandel-pro.web.app'}/#/portal/receipt/${transaction.id}`;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Tanda Terima" size="4xl">
@@ -219,11 +204,6 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
                                 <p className="text-sm font-black text-slate-800 underline underline-offset-8 decoration-slate-200">{profile.authorizedSigner || profile.companyName}</p>
                             </div>
                         </div>
-                        <style dangerouslySetInnerHTML={{ __html: `
-                            @media print {
-                                .force-desktop { width: 1200px !important; }
-                            }
-                        ` }} />
                     </div>
                 </div>
 
@@ -267,10 +247,10 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
                     </button>
 
                     <button
-                        onClick={handleShareWA}
-                        className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-2 px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-sm"
                     >
-                        <Share2Icon className="w-4 h-4" />
+                        <WhatsappIcon className="w-4 h-4" />
                         <span className="text-sm">Kirim ke WA</span>
                     </button>
                 </div>
@@ -290,6 +270,27 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({
                         onClose={() => setIsSignatureModalOpen(false)} 
                     />
                 </Modal>
+
+                {/* Universal Share Modal */}
+                <UniversalShareModal 
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    type={isExpense ? 'expenseShareTemplate' : 'receiptShareTemplate'}
+                    profile={profile}
+                    variables={{
+                        '{clientName}': targetName,
+                        '{companyName}': profile.companyName,
+                        '{amount}': formatCurrency(transaction.amount),
+                        '{description}': transaction.description || '',
+                        '{date}': formatDate(transaction.date),
+                        '{receiptLink}': portalUrl,
+                        '{portalLink}': portalUrl,
+                        '{method}': transaction.method || ''
+                    }}
+                    phone={client?.whatsapp || client?.phone}
+                    title={isExpense ? 'Kirim Bukti Pengeluaran' : 'Kirim Tanda Terima'}
+                    showNotification={() => {}}
+                />
             </div>
         </Modal>
     );

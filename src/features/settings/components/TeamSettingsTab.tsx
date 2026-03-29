@@ -63,13 +63,18 @@ export const TeamSettingsTab: React.FC<TeamSettingsTabProps> = ({ users, setUser
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center bg-brand-bg/40 p-6 rounded-3xl border border-brand-border">
-                <div><h3 className="text-lg font-bold text-brand-text-light">Manajemen Team & Akses</h3><p className="text-xs text-brand-text-secondary mt-1">Kelola anggota tim dan hak akses mereka ke fitur aplikasi.</p></div>
-                <button onClick={() => handleOpenModal('add')} className="button-primary py-2.5 px-6 rounded-xl flex items-center gap-2"><PlusIcon className="w-5 h-5" /> Tambah Anggota</button>
+            <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
+                <div>
+                    <h3 className="text-lg font-bold text-brand-text-light">Manajemen Team & Akses</h3>
+                    <p className="text-xs text-brand-text-secondary mt-1">Kelola anggota tim dan hak akses mereka ke fitur aplikasi.</p>
+                </div>
+                <button onClick={() => handleOpenModal('add')} className="button-primary py-2.5 px-6 rounded-xl flex items-center gap-2">
+                    <PlusIcon className="w-5 h-5" /> Tambah Anggota
+                </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(user => (
-                    <div key={user.id} className="group bg-brand-bg/40 border border-brand-border rounded-3xl p-6 transition-all hover:border-brand-accent/30 flex flex-col">
+                    <div key={user.id} className="group bg-white border border-brand-border rounded-2xl p-6 transition-all hover:border-brand-accent/30 shadow-sm flex flex-col">
                         <div className="flex justify-between items-start mb-4">
                             <div className="w-12 h-12 rounded-2xl bg-brand-accent/10 text-brand-accent flex items-center justify-center text-xl font-bold">{user.fullName[0].toUpperCase()}</div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -16,7 +16,7 @@ import ProjectKanbanView from '@/features/projects/components/ProjectKanbanView'
 import ProjectForm from '@/features/projects/components/ProjectForm';
 import ProjectDetailModal from '@/features/projects/components/ProjectDetailModal';
 import BriefingModal from '@/features/projects/components/BriefingModal';
-import ShareMessageModal from '@/features/communication/components/ShareMessageModal';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
 import ChatModal from '@/features/communication/components/ChatModal';
 import StatModal from '@/features/projects/components/StatModal';
 import QuickStatusModal from '@/features/projects/components/QuickStatusModal';
@@ -200,12 +200,13 @@ const ProjectsPage: React.FC<ProjectsProps> = ({
             )}
 
             {actions.sharePreview && (
-                <ShareMessageModal 
+                <UniversalShareModal 
                     isOpen={!!actions.sharePreview}
                     onClose={() => actions.setSharePreview(null)}
                     title={actions.sharePreview.title}
                     initialMessage={actions.sharePreview.message}
                     phone={actions.sharePreview.phone}
+                    profile={profile}
                     showNotification={showNotification}
                 />
             )}

@@ -57,7 +57,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
             )}
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {categories && categories.length > 0 ? categories.map(cat => (
-                    <div key={cat} className="flex items-center justify-between p-2 md:p-2.5 bg-brand-bg rounded-md">
+                    <div key={cat} className="flex items-center justify-between p-2 md:p-2.5 bg-white border border-brand-border/60 rounded-xl shadow-sm transition-all hover:border-brand-accent/30">
                         <span className="text-xs md:text-sm text-brand-text-primary truncate flex-1 mr-2">{cat}</span>
                         <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
                             <button type="button" onClick={() => onEdit(cat)} className="p-1 text-brand-text-secondary hover:text-brand-accent" title="Edit"><PencilIcon className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>

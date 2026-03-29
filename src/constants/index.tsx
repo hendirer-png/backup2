@@ -962,6 +962,32 @@ Kami dengan senang hati membagikan *Portal Pengantin* Anda, di mana Anda bisa me
 
 Jika ada pertanyaan, jangan ragu menghubungi kami. Semoga membantu! 🙏`;
 
+export const DEFAULT_CONTRACT_SHARE_TEMPLATE = `Halo *{clientName}*! 👋
+
+Berikut kami kirimkan *Kontrak Kerja Digital* untuk Acara Pernikahan Anda bersama *{companyName}* 💍
+
+📄 *Lihat & Tandatangani Kontrak di sini:*
+{contractLink}
+
+Mohon untuk segera meninjau dan melakukan tanda tangan digital melalui tautan di atas agar jadwal Anda segera kami kunci. Terima kasih! 🙏`;
+
+export const DEFAULT_BILLING_SHARE_TEMPLATE = `Halo *{clientName}*! 👋
+
+Kami ingin menginformasikan detail tagihan untuk Acara Pernikahan Anda bersama *{companyName}* 💍
+
+📋 *Rincian Tagihan:*
+{projectDetails}
+
+💰 *Total Sisa Tagihan:* *{totalDue}*
+
+🔗 *Akses Portal & Invoice Anda di sini:*
+{portalLink}
+
+Pembayaran dapat dilakukan ke rekening berikut:
+{bankAccount}
+
+Mohon konfirmasinya jika pembayaran telah dilakukan. Terima kasih! 🙏`;
+
 
 // --- CHAT TEMPLATES ---
 export const CHAT_TEMPLATES: ChatTemplate[] = [

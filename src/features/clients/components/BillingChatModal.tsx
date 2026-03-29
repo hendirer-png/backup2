@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/shared/ui/Modal';
 import { WhatsappIcon } from '@/constants';
-import ShareMessageModal from '@/features/communication/components/ShareMessageModal';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
 import { Client, Project, Profile } from '@/types';
 import { DEFAULT_BILLING_TEMPLATES } from '@/constants';
 import { formatCurrency } from '@/features/clients/utils/clients.utils';
@@ -11,7 +11,7 @@ import { BillingChatModalProps } from '@/features/clients/types';
 const BillingChatModal: React.FC<BillingChatModalProps> = ({ isOpen, onClose, client, projects, userProfile, showNotification }) => {
     const [message, setMessage] = useState('');
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
-    const [sharePreview, setSharePreview] = useState<{ title: string; message: string; phone?: string | null } | null>(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     // Use profile billing templates if available, otherwise use defaults
     const BILLING_CHAT_TEMPLATES = (userProfile.billingTemplates && userProfile.billingTemplates.length > 0)
@@ -21,13 +21,13 @@ const BillingChatModal: React.FC<BillingChatModalProps> = ({ isOpen, onClose, cl
     useEffect(() => {
         if (!client) return;
 
-        const projectsWithBalance = projects.filter(p => p.clientId === client.id && (p.totalCost - p.amountPaid) > 0);
+        const projectsWithBalance = projects.filter(p => p.clientId === client.id && (p.totalCost - (p.amountPaid || 0)) > 0);
         if (projectsWithBalance.length === 0) return;
 
-        const totalDue = projectsWithBalance.reduce((sum, p) => sum + (p.totalCost - p.amountPaid), 0);
+        const totalDue = projectsWithBalance.reduce((sum, p) => sum + (p.totalCost - (p.amountPaid || 0)), 0);
 
         const projectDetails = projectsWithBalance.map(p =>
-            `- Acara Pernikahan: *${p.projectName}*\n  Sisa Tagihan: ${formatCurrency(p.totalCost - p.amountPaid)}`
+            `- Acara Pernikahan: *${p.projectName}*\n  Sisa Tagihan: ${formatCurrency(p.totalCost - (p.amountPaid || 0))}`
         ).join('\n');
 
         const path = window.location.pathname.replace(/index\.html$/, '');
@@ -57,11 +57,7 @@ const BillingChatModal: React.FC<BillingChatModalProps> = ({ isOpen, onClose, cl
             return;
         }
 
-        setSharePreview({
-            title: `Kirim Tagihan ke ${client.name}`,
-            message,
-            phone: client.whatsapp || client.phone,
-        });
+        setIsShareModalOpen(true);
     };
 
     if (!isOpen || !client) return null;
@@ -94,16 +90,18 @@ const BillingChatModal: React.FC<BillingChatModalProps> = ({ isOpen, onClose, cl
                     </button>
                 </div>
             </div>
-            {sharePreview && (
-                <ShareMessageModal
-                    isOpen={!!sharePreview}
+            
+            {isShareModalOpen && (
+                <UniversalShareModal
+                    isOpen={isShareModalOpen}
                     onClose={() => {
-                        setSharePreview(null);
+                        setIsShareModalOpen(false);
                         onClose();
                     }}
-                    title={sharePreview.title}
-                    initialMessage={sharePreview.message}
-                    phone={sharePreview.phone}
+                    title={`Kirim Tagihan ke ${client.name}`}
+                    initialMessage={message}
+                    phone={client.whatsapp || client.phone}
+                    profile={userProfile}
                     showNotification={showNotification}
                 />
             )}

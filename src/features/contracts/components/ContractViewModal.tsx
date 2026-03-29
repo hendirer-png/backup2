@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from '@/shared/ui/Modal';
 import SignaturePad from '@/shared/ui/SignaturePad';
 import { Contract, Project, Profile, Client } from '@/types';
 import ContractDocument from '@/features/contracts/components/ContractDocument';
-import { DownloadIcon, PrinterIcon, QrCodeIcon, CheckSquareIcon } from '@/constants';
+import { DownloadIcon, PrinterIcon, QrCodeIcon, CheckSquareIcon, WhatsappIcon } from '@/constants';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
 
 interface ContractViewModalProps {
     isOpen: boolean;
@@ -34,6 +35,8 @@ export const ContractViewModal: React.FC<ContractViewModalProps> = ({
     handleDownloadPDFWithoutTTD,
     showNotification
 }) => {
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
     if (!selectedContract) return null;
     
     const project = projects.find(p => p.id === selectedContract.projectId);
@@ -41,9 +44,12 @@ export const ContractViewModal: React.FC<ContractViewModalProps> = ({
 
     if (!project) return null;
 
+    const contractUrl = `https://vandel-pro.web.app/#/public/contract/${selectedContract.id}`;
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Detail Kontrak" size="4xl">
             <div>
+                {/* ... existing modal content ... */}
                 <div className="max-h-[70vh] overflow-y-auto border border-slate-200 rounded-2xl bg-white custom-scrollbar shadow-2xl shadow-slate-200/50 ring-1 ring-slate-950/5 relative">
                     <div className="sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent z-10 pointer-events-none"></div>
                     <ContractDocument 
@@ -57,6 +63,7 @@ export const ContractViewModal: React.FC<ContractViewModalProps> = ({
                 
                 <div className="mt-8 flex flex-wrap justify-between items-center gap-6 border-t border-brand-border pt-6 non-printable">
                     <div className="flex items-center gap-8">
+                        {/* Signature statuses */}
                         <div className="flex items-center gap-3">
                             <div className={`p-2.5 rounded-xl transition-all ${selectedContract.vendorSignature || profile.signatureBase64 ? 'bg-green-100 text-green-600 ring-4 ring-green-50' : 'bg-yellow-100 text-yellow-600 ring-4 ring-yellow-50'}`}>
                                 <CheckSquareIcon className="w-5 h-5" />
@@ -112,10 +119,17 @@ export const ContractViewModal: React.FC<ContractViewModalProps> = ({
                         </button>
 
                         <button 
+                            onClick={() => setIsShareModalOpen(true)} 
+                            className="bg-green-50 text-green-600 border border-green-100 hover:bg-green-100 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                        >
+                            <WhatsappIcon className="w-4 h-4"/>
+                            <span>Kirim ke WA</span>
+                        </button>
+
+                        <button 
                             onClick={() => {
-                                const url = `https://vandel-pro.web.app/#/public/contract/${selectedContract.id}`;
-                                navigator.clipboard.writeText(url);
-                                showNotification('Tautan portal klien berhasil disalin!');
+                                navigator.clipboard.writeText(contractUrl);
+                                showNotification('Tautan kontrak klien berhasil disalin!');
                             }} 
                             className="bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
                         >
@@ -136,6 +150,22 @@ export const ContractViewModal: React.FC<ContractViewModalProps> = ({
                 >
                         <SignaturePad onSave={handleSaveSignature} onClose={() => setIsSignatureModalOpen(false)} />
                 </Modal>
+
+                {/* WhatsApp Share Modal */}
+                <UniversalShareModal 
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    type="contractShareTemplate"
+                    profile={profile}
+                    variables={{
+                        '{clientName}': client?.name || '',
+                        '{companyName}': profile.companyName,
+                        '{contractLink}': contractUrl
+                    }}
+                    phone={client?.whatsapp || client?.phone}
+                    title="Kirim Kontrak Digital"
+                    showNotification={showNotification}
+                />
             </div>
         </Modal>
     );

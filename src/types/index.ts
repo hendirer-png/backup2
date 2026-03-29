@@ -580,6 +580,8 @@ export interface Profile {
   receiptShareTemplate?: string;
   expenseShareTemplate?: string;
   portalShareTemplate?: string;
+  contractShareTemplate?: string;
+  billingShareTemplate?: string;
   checklistTemplates?: ChecklistTemplate[];
   contractTemplate?: string;
   signature?: string;

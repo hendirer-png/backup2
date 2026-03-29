@@ -1,6 +1,8 @@
 import React from 'react';
 import { Profile } from '@/types';
 import { CategoryManager } from '@/features/settings/components/CategoryManager';
+import CollapsibleSection from '@/shared/ui/CollapsibleSection';
+import { PackageIcon } from '@/constants';
 
 interface PackageSettingsTabProps {
     profile: Profile;
@@ -25,15 +27,22 @@ export const PackageSettingsTab: React.FC<PackageSettingsTabProps> = ({
     };
 
     return (
-        <div className="max-w-2xl mx-auto bg-brand-bg/40 border border-brand-border rounded-3xl p-6 md:p-8">
-            <CategoryManager
-                title="Kategori Package" placeholder="Tambah Kategori (e.g. Wedding)" categories={profile.packageCategories || []}
-                inputValue={packageCategoryInput} onInputChange={setPackageCategoryInput}
-                onAddOrUpdate={handleUpdate}
-                onEdit={(cat) => { setEditingPackageCategory(cat); setPackageCategoryInput(cat); }}
-                onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('packageCategories', (profile.packageCategories || []).filter(c => c !== cat))}
-                editingValue={editingPackageCategory} onCancelEdit={() => { setEditingPackageCategory(null); setPackageCategoryInput(''); }}
-            />
+        <div className="max-w-2xl mx-auto">
+            <CollapsibleSection 
+                title="Kategori Package" 
+                defaultExpanded={true} 
+                variant="filled"
+                icon={<PackageIcon className="w-4 h-4" />}
+            >
+                <CategoryManager
+                    title="Daftar Kategori Package" placeholder="Tambah Kategori (e.g. Wedding)" categories={profile.packageCategories || []}
+                    inputValue={packageCategoryInput} onInputChange={setPackageCategoryInput}
+                    onAddOrUpdate={handleUpdate}
+                    onEdit={(cat) => { setEditingPackageCategory(cat); setPackageCategoryInput(cat); }}
+                    onDelete={(cat) => confirm(`Hapus "${cat}"?`) && handleCategoryUpdate('packageCategories', (profile.packageCategories || []).filter(c => c !== cat))}
+                    editingValue={editingPackageCategory} onCancelEdit={() => { setEditingPackageCategory(null); setPackageCategoryInput(''); }}
+                />
+            </CollapsibleSection>
         </div>
     );
 };

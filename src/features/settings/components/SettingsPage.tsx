@@ -31,15 +31,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
         queryClient.invalidateQueries({ queryKey: ['users'] });
     };
 
-    if (isProfileLoading || !profile) {
-        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Pengaturan...</div>;
-    }
-
     const {
-        activeTab, setActiveTab, showSuccess, successMessage, isSaving, saveError,
+        showSuccess, successMessage, isSaving, saveError,
         showNotification, handleProfileSubmit, handleCategoryUpdate
     } = useSettingsPage({ currentUser });
-
 
     // Category Inputs (Internal to page state)
     const [incomeInput, setIncomeInput] = useState('');
@@ -53,14 +48,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
     const [pkgCatInput, setPkgCatInput] = useState('');
     const [editPkgCat, setEditPkgCat] = useState<string | null>(null);
 
-    const tabs = [
-        { id: 'profile', label: 'Profil Vendor', icon: <UsersIcon className="w-4 h-4" /> },
-        { id: 'finance', label: 'Finance & Bank', icon: <CashIcon className="w-4 h-4" /> },
-        { id: 'team', label: 'Team & Akses', icon: <UsersIcon className="w-4 h-4" /> },
-        { id: 'packages', label: 'Package Category', icon: <PackageIcon className="w-4 h-4" /> },
-        { id: 'projects', label: 'Project & Status', icon: <LayoutGridIcon className="w-4 h-4" /> },
-        { id: 'messages', label: 'Chat Templates', icon: <MessageSquareIcon className="w-4 h-4" /> },
-    ];
+    if (isProfileLoading || !profile) {
+        return <div className="p-8 text-center text-brand-text-secondary animate-pulse font-black uppercase tracking-widest">Memuat Pengaturan...</div>;
+    }
 
     return (
         <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
@@ -68,24 +58,66 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
                 <div><h1 className="text-2xl md:text-3xl font-black text-brand-text-light tracking-tight">Pengaturan & Konfigurasi</h1><p className="text-brand-text-secondary text-sm mt-1">Sesuaikan identitas vendor, manajemen tim, dan template pesan WhatsApp.</p></div>
             </header>
 
-            <nav className="flex gap-2 border-b border-brand-border pb-4 overflow-x-auto no-scrollbar">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id} onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 md:px-6 py-3 rounded-2xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-brand-accent text-white shadow-xl shadow-brand-accent/20 scale-105' : 'text-brand-text-secondary hover:bg-brand-bg hover:text-brand-text-primary'}`}
-                    >
-                        {tab.icon} {tab.label}
-                    </button>
-                ))}
-            </nav>
+            <main className="space-y-12 pb-20">
+                <section id="profile" className="scroll-mt-24">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <UsersIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Profil Vendor</h2>
+                    </div>
+                    <ProfileSettingsTab profile={profile} setProfile={() => {}} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />
+                </section>
 
-            <main className="min-h-[60vh] pb-20">
-                {activeTab === 'profile' && <ProfileSettingsTab profile={profile} setProfile={() => {}} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />}
-                {activeTab === 'finance' && <FinanceSettingsTab profile={profile} incomeCategoryInput={incomeInput} setIncomeCategoryInput={setIncomeInput} editingIncomeCategory={editIncome} setEditingIncomeCategory={setEditIncome} expenseCategoryInput={expenseInput} setExpenseCategoryInput={setExpenseInput} editingExpenseCategory={editExpense} setEditingExpenseCategory={setEditExpense} handleCategoryUpdate={handleCategoryUpdate} />}
-                {activeTab === 'team' && <TeamSettingsTab users={users} setUsers={setUsers} currentUser={currentUser} />}
-                {activeTab === 'packages' && <PackageSettingsTab profile={profile} packageCategoryInput={pkgCatInput} setPackageCategoryInput={setPkgCatInput} editingPackageCategory={editPkgCat} setEditingPackageCategory={setEditPkgCat} handleCategoryUpdate={handleCategoryUpdate} />}
-                {activeTab === 'projects' && <ProjectSettingsTab profile={profile} setProfile={() => {}} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />}
-                {activeTab === 'messages' && <MessageSettingsTab profile={profile} setProfile={() => {}} showSuccess={showNotification} />}
+                <section id="finance" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <CashIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Finance & Bank</h2>
+                    </div>
+                    <FinanceSettingsTab profile={profile} incomeCategoryInput={incomeInput} setIncomeCategoryInput={setIncomeInput} editingIncomeCategory={editIncome} setEditingIncomeCategory={setEditIncome} expenseCategoryInput={expenseInput} setExpenseCategoryInput={setExpenseInput} editingExpenseCategory={editExpense} setEditingExpenseCategory={setEditExpense} handleCategoryUpdate={handleCategoryUpdate} />
+                </section>
+
+                <section id="team" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <UsersIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Team & Akses</h2>
+                    </div>
+                    <TeamSettingsTab users={users} setUsers={setUsers} currentUser={currentUser} />
+                </section>
+
+                <section id="packages" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <PackageIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Package Category</h2>
+                    </div>
+                    <PackageSettingsTab profile={profile} packageCategoryInput={pkgCatInput} setPackageCategoryInput={setPkgCatInput} editingPackageCategory={editPkgCat} setEditingPackageCategory={setEditPkgCat} handleCategoryUpdate={handleCategoryUpdate} />
+                </section>
+
+                <section id="projects" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <LayoutGridIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Project & Status</h2>
+                    </div>
+                    <ProjectSettingsTab profile={profile} setProfile={() => {}} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />
+                </section>
+
+                <section id="messages" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <MessageSquareIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Chat Templates</h2>
+                    </div>
+                    <MessageSettingsTab profile={profile} setProfile={() => {}} showSuccess={showNotification} />
+                </section>
             </main>
         </div>
     );

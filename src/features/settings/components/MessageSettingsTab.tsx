@@ -116,7 +116,7 @@ export const MessageSettingsTab: React.FC<MessageSettingsTabProps> = ({ profile,
 
             {innerTab === 'share' && (
                 <div className="space-y-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-brand-bg/50 p-4 rounded-2xl border border-brand-border">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
                         <div className="flex items-start gap-4"><div className="w-12 h-12 rounded-2xl bg-cyan-400/20 text-cyan-400 flex items-center justify-center text-2xl">🔗</div><div><h3 className="text-base font-bold text-brand-text-light">Template Share Link & Dokumen</h3><p className="text-xs text-brand-text-secondary mt-1">Pesan khusus untuk membagikan link portal, katalog, dan dokumen PDF.</p></div></div>
                         <button onClick={async () => { setIsSaving(true); try { await upsertProfile(profile); showSuccess('Semua template share berhasil disimpan!'); } catch (err) { alert('Gagal'); } finally { setIsSaving(false); } }} className="button-primary py-3 px-6 rounded-xl font-bold">Simpan Perubahan</button>
                     </div>

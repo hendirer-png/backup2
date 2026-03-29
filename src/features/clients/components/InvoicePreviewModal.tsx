@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Project, Profile, Package, Client } from '@/types';
 import InvoiceDocument from '@/features/finance/components/InvoiceDocument';
-import { DownloadIcon, Share2Icon, PencilIcon } from '@/constants';
 import Modal from '@/shared/ui/Modal';
 import SignaturePad from '@/shared/ui/SignaturePad';
+import { UniversalShareModal } from '@/shared/components/UniversalShareModal';
+import { DownloadIcon, PencilIcon, WhatsappIcon } from '@/constants';
 
 interface InvoicePreviewModalProps {
     isOpen: boolean;
@@ -27,6 +28,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
     onSign
 }) => {
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     
     if (!isOpen) return null;
 
@@ -60,37 +62,14 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
         }
     };
 
-
-    const handleShareWA = () => {
-        const portalUrl = `${window.location.origin}/#/portal/invoice/${project.id}`;
-        
-        let message = `Halo ${project.clientName},\n\n`;
-        message += `Berikut adalah Invoice untuk layanan ${project.projectName}.\n`;
-        message += `Total Tagihan: Rp ${project.totalCost.toLocaleString('id-ID')}\n`;
-        if (project.amountPaid > 0) {
-            message += `Sudah Dibayar: Rp ${project.amountPaid.toLocaleString('id-ID')}\n`;
-            message += `Sisa Pembayaran: Rp ${(project.totalCost - project.amountPaid).toLocaleString('id-ID')}\n`;
-        }
-        message += `\nAnda dapat melihat detail invoice melalui link berikut:\n${portalUrl}\n\n`;
-        message += `Terima kasih,\n${profile.companyName}`;
-        
-        const encodedMessage = encodeURIComponent(message);
-        
-        // Coba nomor klien, atau buka kosong
-        const phone = client?.phone ? client.phone.replace(/\D/g, '') : '';
-        const whatsappUrl = phone 
-            ? `https://wa.me/${phone}?text=${encodedMessage}` 
-            : `https://wa.me/?text=${encodedMessage}`;
-            
-        window.open(whatsappUrl, '_blank');
-    };
-
     const handleSignatureSave = (signatureData: string) => {
         if (onSign) {
             onSign(signatureData);
         }
         setIsSignatureModalOpen(false);
     };
+
+    const portalUrl = `${window.location.host === 'localhost:3000' ? 'http://localhost:3000' : 'https://vandel-pro.web.app'}/#/portal/invoice/${project.id}`;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Invoice" size="4xl">
@@ -148,10 +127,10 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     </button>
 
                     <button
-                        onClick={handleShareWA}
-                        className="flex items-center gap-2 px-6 py-2 bg-brand-accent hover:bg-brand-accent-hover text-white font-semibold rounded-lg transition-colors shadow-sm"
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-2 px-6 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-sm"
                     >
-                        <Share2Icon className="w-4 h-4" />
+                        <WhatsappIcon className="w-4 h-4" />
                         <span className="text-sm">Kirim ke WA</span>
                     </button>
                 </div>
@@ -165,6 +144,28 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                 >
                     <SignaturePad onSave={handleSignatureSave} onClose={() => setIsSignatureModalOpen(false)} />
                 </Modal>
+
+                {/* Universal Share Modal */}
+                <UniversalShareModal 
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    type="invoiceShareTemplate"
+                    profile={profile}
+                    variables={{
+                        '{clientName}': client?.name || project.clientName,
+                        '{companyName}': profile.companyName,
+                        '{projectName}': project.projectName,
+                        '{totalCost}': `Rp ${project.totalCost.toLocaleString('id-ID')}`,
+                        '{amountPaid}': `Rp ${project.amountPaid.toLocaleString('id-ID')}`,
+                        '{sisaTagihan}': `Rp ${(project.totalCost - (project.amountPaid || 0)).toLocaleString('id-ID')}`,
+                        '{invoiceLink}': portalUrl,
+                        '{portalLink}': portalUrl,
+                        '{bankAccount}': profile.bankAccount || ''
+                    }}
+                    phone={client?.whatsapp || client?.phone}
+                    title="Kirim Invoice via WhatsApp"
+                    showNotification={() => {}} 
+                />
             </div>
         </Modal>
     );

@@ -64,8 +64,8 @@ export const useSettingsPage = ({ currentUser }: UseSettingsPageProps) => {
 
 
     // Chat Template Logic
-    const [chatTemplates, setChatTemplates] = useState<ChatTemplate[]>(profile.chatTemplates || CHAT_TEMPLATES);
-    const [billingTemplates, setBillingTemplates] = useState<ChatTemplate[]>(profile.billingTemplates || DEFAULT_BILLING_TEMPLATES);
+    const [chatTemplates, setChatTemplates] = useState<ChatTemplate[]>(profile?.chatTemplates || CHAT_TEMPLATES);
+    const [billingTemplates, setBillingTemplates] = useState<ChatTemplate[]>(profile?.billingTemplates || DEFAULT_BILLING_TEMPLATES);
 
     const persistChatTemplates = async (updated: ChatTemplate[]) => {
         setIsSaving(true);
