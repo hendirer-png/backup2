@@ -16,7 +16,12 @@ import {
     WhatsappIcon,
     ChevronDownIcon,
     FileTextIcon,
-    PencilIcon
+    PencilIcon,
+    BriefcaseIcon,
+    MicrophoneIcon,
+    CameraIcon,
+    HomeIcon,
+    LayoutGridIcon
 } from '@/constants';
 
 // --- Components ---
@@ -87,6 +92,16 @@ const TestimonialCard: React.FC<{ name: string; role: string; content: string; i
     </div>
 );
 
+const VendorCategoryCard: React.FC<{ title: string; subtitle: string; icon: React.ReactNode; color: string }> = ({ title, subtitle, icon, color }) => (
+    <div className="glass-card p-8 rounded-[2.5rem] border border-brand-border/40 card-hover-lift group text-center flex flex-col items-center">
+        <div className={`w-16 h-16 rounded-2xl ${color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 shadow-lg`}>
+            {icon}
+        </div>
+        <h4 className="text-xl font-black text-brand-text-light mb-2">{title}</h4>
+        <p className="text-sm text-brand-text-secondary leading-relaxed">{subtitle}</p>
+    </div>
+);
+
 const PricingCard: React.FC<{ 
     tier: string; 
     price: string; 
@@ -141,11 +156,13 @@ const Homepage: React.FC = () => {
                     <span className="text-2xl font-black text-brand-text-light tracking-tighter">weddfin</span>
                 </div>
                 
-                <nav className="hidden md:flex items-center gap-8">
-                    <a href="#features" className="text-sm font-semibold hover:text-brand-accent transition-colors">Fitur</a>
-                    <a href="#testimonials" className="text-sm font-semibold hover:text-brand-accent transition-colors">Testimoni</a>
-                    <a href="#pricing" className="text-sm font-semibold hover:text-brand-accent transition-colors">Harga</a>
-                    <a href="#faq" className="text-sm font-semibold hover:text-brand-accent transition-colors">FAQ</a>
+                <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+                    <a href="#features" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">Fitur</a>
+                    <a href="#client-portal" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">Portal Klien</a>
+                    <a href="#team-portal" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">Portal Tim</a>
+                    <a href="#testimonials" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">Testimoni</a>
+                    <a href="#pricing" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">Harga</a>
+                    <a href="#faq" className="text-sm font-bold text-brand-text-secondary hover:text-brand-accent transition-colors">FAQ</a>
                 </nav>
 
                 <div className="flex items-center gap-3">
@@ -210,6 +227,35 @@ const Homepage: React.FC = () => {
                                         <div className="font-black text-brand-text-light">5 Acara Aktif</div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Partners / Trusted BY Section */}
+                <section className="py-12 bg-white/30 backdrop-blur-sm border-y border-brand-border/20">
+                    <div className="max-w-7xl mx-auto px-6">
+                        <p className="text-center text-xs font-bold text-brand-text-secondary uppercase tracking-[0.2em] mb-10">Dipercaya oleh Vendor Wedding Profesional</p>
+                        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                            <div className="flex items-center gap-2 group cursor-default">
+                                <div className="w-8 h-8 rounded-lg bg-brand-accent/20 flex items-center justify-center font-black text-brand-accent text-xs">VP</div>
+                                <span className="text-lg font-black text-brand-text-light tracking-tighter group-hover:text-brand-accent transition-colors">Vena Pictures</span>
+                            </div>
+                            <div className="flex items-center gap-2 group cursor-default">
+                                <div className="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center font-black text-pink-500 text-xs">LW</div>
+                                <span className="text-lg font-black text-brand-text-light tracking-tighter group-hover:text-pink-500 transition-colors">Lumina Wedding</span>
+                            </div>
+                            <div className="flex items-center gap-2 group cursor-default">
+                                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center font-black text-amber-500 text-xs">GW</div>
+                                <span className="text-lg font-black text-brand-text-light tracking-tighter group-hover:text-amber-500 transition-colors">Griya Wedding</span>
+                            </div>
+                            <div className="flex items-center gap-2 group cursor-default">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center font-black text-indigo-500 text-xs">TS</div>
+                                <span className="text-lg font-black text-brand-text-light tracking-tighter group-hover:text-indigo-500 transition-colors">The Signature</span>
+                            </div>
+                            <div className="flex items-center gap-2 group cursor-default">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center font-black text-emerald-500 text-xs">RM</div>
+                                <span className="text-lg font-black text-brand-text-light tracking-tighter group-hover:text-emerald-500 transition-colors">Rina MUA</span>
                             </div>
                         </div>
                     </div>
@@ -356,6 +402,229 @@ const Homepage: React.FC = () => {
                                 title="Analitik & Laporan" 
                                 description="Laporan performa bulanan dan tahunan untuk membantu Anda mengambil keputusan bisnis."
                                 icon={<ChartPieIcon className="w-8 h-8" />}
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Client Portal Section */}
+                <section id="client-portal" className="py-24 px-6 bg-brand-surface relative overflow-hidden border-y border-brand-border/20">
+                    <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+                        <div className="flex-1 space-y-8 animate-fade-in">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-pink-500/10 border border-pink-500/20">
+                                <UsersIcon className="w-5 h-5 text-pink-500" />
+                                <span className="text-xs font-bold text-pink-500 uppercase tracking-widest">Client Experience</span>
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black text-brand-text-light leading-tight">
+                                Pengalaman Portal Klien <br />
+                                <span className="text-pink-500 text-gradient from-pink-500 to-rose-400">Eksklusif & Transparan.</span>
+                            </h2>
+                            <p className="text-brand-text-secondary text-lg leading-relaxed">
+                                Berikan kesan mewah kepada calon pengantin Anda. Mereka dapat mengakses semua kebutuhan acara mereka dalam satu link portal pribadi yang profesional.
+                            </p>
+                            <div className="space-y-6">
+                                <div className="flex gap-4 p-6 bg-brand-bg/50 rounded-3xl border border-brand-border/30 hover:border-pink-500/30 transition-all group shadow-sm hover:shadow-pink-500/5">
+                                    <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500 flex-shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                                        <FileTextIcon className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-brand-text-light">Kontrak & Invoice Digital</h4>
+                                        <p className="text-sm text-brand-text-secondary leading-relaxed">Lihat riwayat pembayaran, sisa tagihan, dan tanda tangani kontrak tanpa perlu kertas.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 p-6 bg-brand-bg/50 rounded-3xl border border-brand-border/30 hover:border-pink-500/30 transition-all group shadow-sm hover:shadow-pink-500/5">
+                                    <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500 flex-shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                                        <PackageIcon className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-brand-text-light">Pilihan Paket & Add-on</h4>
+                                        <p className="text-sm text-brand-text-secondary leading-relaxed">Klien bisa melihat detail paket yang diambil dan memesan layanan tambahan (Add-on).</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 p-6 bg-brand-bg/50 rounded-3xl border border-brand-border/30 hover:border-pink-500/30 transition-all group shadow-sm hover:shadow-pink-500/5">
+                                    <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-500 flex-shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                                        <SparkleIcon className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-brand-text-light">Galeri Hasil Kerja</h4>
+                                        <p className="text-sm text-brand-text-secondary leading-relaxed">Preview hasil foto dan video langsung di portal setelah acara selesai dilakukan.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 relative order-first lg:order-last">
+                            <div className="glass-card bg-brand-bg p-4 rounded-[3rem] shadow-[0_40px_100px_rgba(236,72,153,0.15)] border border-brand-border/50 transform lg:rotate-3 hover:rotate-0 transition-transform duration-1000">
+                                <div className="aspect-[4/3] bg-brand-surface rounded-[2.2rem] flex items-center justify-center border border-brand-border overflow-hidden relative">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-transparent"></div>
+                                    <div className="text-center space-y-4 px-8">
+                                        <div className="w-16 h-16 bg-pink-500/20 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                                            <UsersIcon className="w-8 h-8 text-pink-500" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-brand-text-light">Bridal Portal Preview</h3>
+                                        <p className="text-sm text-brand-text-secondary">Visualisasi Dashboard Pengantin</p>
+                                    </div>
+                                </div>
+                                <div className="absolute -top-6 -right-6 glass-card p-4 rounded-2xl shadow-xl border border-pink-500/30 animate-bounce-subtle">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg">
+                                            <CheckIcon className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-brand-text-light uppercase tracking-wider">Kontrak Aktif</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute -z-10 bg-pink-500/10 blur-[120px] w-full h-full rounded-full"></div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Team Portal Section */}
+                <section id="team-portal" className="py-24 px-6 bg-brand-bg relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+                        <div className="flex-1 relative">
+                            <div className="glass-card bg-brand-surface p-4 rounded-[3rem] shadow-[0_40px_100px_rgba(59,130,246,0.1)] border border-brand-border transform lg:-rotate-3 hover:rotate-0 transition-transform duration-1000">
+                                <div className="aspect-[4/3] bg-brand-bg rounded-[2.2rem] flex items-center justify-center border border-brand-border overflow-hidden relative">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent"></div>
+                                    <div className="text-center space-y-4 px-8">
+                                        <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                                            <BriefcaseIcon className="w-8 h-8 text-blue-500" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-brand-text-light">Crew Dashboard</h3>
+                                        <p className="text-sm text-brand-text-secondary">Visualisasi Portal Freelancer</p>
+                                    </div>
+                                </div>
+                                <div className="absolute -bottom-6 -left-6 glass-card p-4 rounded-2xl shadow-xl border border-blue-500/30 animate-float">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center font-bold text-xs border border-blue-500/30 shadow-sm">KRU</div>
+                                        <div>
+                                            <div className="text-[10px] text-brand-text-secondary uppercase font-bold tracking-widest">Tugas Baru</div>
+                                            <div className="text-xs font-black text-brand-text-light">Wedding Anissa & Dimas</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute -z-10 bg-blue-500/10 blur-[120px] w-full h-full rounded-full"></div>
+                        </div>
+                        <div className="flex-1 space-y-8 animate-slide-up">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20">
+                                <BriefcaseIcon className="w-5 h-5 text-blue-500" />
+                                <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Operations Excellence</span>
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black text-brand-text-light leading-tight">
+                                Koordinasi Tim & Kru <br />
+                                <span className="text-blue-500 text-gradient from-blue-500 to-indigo-400">Tanpa Miskomunikasi.</span>
+                            </h2>
+                            <p className="text-brand-text-secondary text-lg leading-relaxed">
+                                Kelola puluhan freelancer fotografer dan videografer dengan sistem portal mandiri. Biarkan mereka fokus bekerja, sementara sistem mengurus sisanya.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="p-8 bg-brand-surface rounded-[2.5rem] border border-brand-border/50 hover:border-blue-500/30 transition-all hover:bg-brand-surface/50 group shadow-sm hover:shadow-blue-500/5">
+                                    <CalendarIcon className="w-8 h-8 text-blue-500 mb-4 group-hover:scale-110 transition-transform drop-shadow-sm" />
+                                    <h5 className="font-bold text-brand-text-light mb-2">Jadwal Mandiri</h5>
+                                    <p className="text-xs text-brand-text-secondary leading-relaxed">Tiap kru punya akses melihat kalender acara yang ditugaskan kepada mereka.</p>
+                                </div>
+                                <div className="p-8 bg-brand-surface rounded-[2.5rem] border border-brand-border/50 hover:border-blue-500/30 transition-all hover:bg-brand-surface/50 group shadow-sm hover:shadow-blue-500/5">
+                                    <CheckCircleIcon className="w-8 h-8 text-blue-500 mb-4 group-hover:scale-110 transition-transform drop-shadow-sm" />
+                                    <h5 className="font-bold text-brand-text-light mb-2">Status Pekerjaan</h5>
+                                    <p className="text-xs text-brand-text-secondary leading-relaxed">Kru dapat melaporkan status penyelesaian tugas (Checking, Editing, Done).</p>
+                                </div>
+                                <div className="p-8 bg-brand-surface rounded-[2.5rem] border border-brand-border/50 hover:border-blue-500/30 transition-all hover:bg-brand-surface/50 group shadow-sm hover:shadow-blue-500/5">
+                                    <DollarSignIcon className="w-8 h-8 text-blue-500 mb-4 group-hover:scale-110 transition-transform drop-shadow-sm" />
+                                    <h5 className="font-bold text-brand-text-light mb-2">Rekap Pembayaran</h5>
+                                    <p className="text-xs text-brand-text-secondary leading-relaxed">Pantau hak pembayaran (fee) kru secara transparan berdasarkan penyelesaian tugas.</p>
+                                </div>
+                                <div className="p-8 bg-brand-surface rounded-[2.5rem] border border-brand-border/50 hover:border-blue-500/30 transition-all hover:bg-brand-surface/50 group shadow-sm hover:shadow-blue-500/5">
+                                    <BriefcaseIcon className="w-8 h-8 text-blue-500 mb-4 group-hover:scale-110 transition-transform drop-shadow-sm" />
+                                    <h5 className="font-bold text-brand-text-light mb-2">Database Vendor</h5>
+                                    <p className="text-xs text-brand-text-secondary leading-relaxed">Kelola database freelancer terbaik Anda untuk penugasan proyek berikutnya.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Multi-Vendor Solutions Section */}
+                <section id="solutions" className="py-24 px-6 bg-brand-surface relative overflow-hidden active-section">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-16 space-y-4">
+                            <h2 className="text-4xl md:text-5xl font-black text-brand-text-light leading-tight">
+                                Solusi Terlengkap Untuk <br />
+                                <span className="text-gradient">Semua Jenis Vendor.</span>
+                            </h2>
+                            <p className="text-brand-text-secondary max-w-2xl mx-auto">
+                                Apapun bidang bisnis pernikahan Anda, weddfin hadir dengan fitur yang dipersonalisasi untuk kebutuhan operasional harian Anda.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <VendorCategoryCard 
+                                title="Catering" 
+                                subtitle="Kelola menu, staf dapur, dan jadwal pengiriman makanan dengan presisi." 
+                                icon={<BriefcaseIcon className="w-8 h-8 text-orange-500" />} 
+                                color="bg-orange-500/10"
+                            />
+                            <VendorCategoryCard 
+                                title="Makeup Artist" 
+                                subtitle="Atur jadwal trial, hari-H, dan manajemen tim perias profesional Anda." 
+                                icon={<SparkleIcon className="w-8 h-8 text-pink-500" />} 
+                                color="bg-pink-500/10"
+                            />
+                            <VendorCategoryCard 
+                                title="Photography" 
+                                subtitle="Pantau status edit foto/video dan kirim galeri ke klien secara otomatis." 
+                                icon={<CameraIcon className="w-8 h-8 text-blue-500" />} 
+                                color="bg-blue-500/10"
+                            />
+                            <VendorCategoryCard 
+                                title="Master of Ceremony" 
+                                subtitle="Sinkronisasi rundown acara dan akses skrip digital langsung dari dashboard." 
+                                icon={<MicrophoneIcon className="w-8 h-8 text-indigo-500" />} 
+                                color="bg-indigo-500/10"
+                            />
+                            <VendorCategoryCard 
+                                title="Decoration" 
+                                subtitle="Checklist inventaris barang, timeline setup, dan manajemen logistik gudang." 
+                                icon={<LayoutGridIcon className="w-8 h-8 text-emerald-500" />} 
+                                color="bg-emerald-500/10"
+                            />
+                            <VendorCategoryCard 
+                                title="Venue / Gedung" 
+                                subtitle="Sistem booking kalender ruangan dan database fasilitas teknis lokasi." 
+                                icon={<HomeIcon className="w-8 h-8 text-rose-500" />} 
+                                color="bg-rose-500/10"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Testimonials Section */}
+                <section id="testimonials" className="py-24 px-6 bg-brand-bg relative overflow-hidden">
+                    <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-brand-accent/5 blur-[100px] rounded-full"></div>
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-16">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4">
+                                <StarIcon className="w-4 h-4 text-amber-500 fill-current" />
+                                <span className="text-xs font-bold text-amber-500 uppercase tracking-widest">Kisah Sukses Vendor</span>
+                            </div>
+                            <h2 className="text-4xl md:text-5xl font-black text-brand-text-light mb-4">Apa Kata Mereka?</h2>
+                            <p className="text-brand-text-secondary max-w-2xl mx-auto">Bergabunglah dengan ratusan vendor yang telah mentransformasi bisnis mereka menjadi lebih efisien dan menguntungkan.</p>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-3 gap-8">
+                            <TestimonialCard 
+                                name="Hendra Wijaya" 
+                                role="Owner Vena Pictures" 
+                                content="Dulu saya pusing menagih sisa pelunasan ke klien. Sejak pakai weddfin, reminder otomatis ke WhatsApp sangat membantu. Penagihan jadi lebih elegan dan lancar!"
+                            />
+                            <TestimonialCard 
+                                name="Maya Saputri" 
+                                role="Founder Griya Wedding WO" 
+                                content="Fitur Portal Tim adalah penyelamat. Kru lapangan kami bisa melihat jadwal dan tugas mereka langsung dari HP masing-masing tanpa saya perlu chat manual setiap hari."
+                            />
+                            <TestimonialCard 
+                                name="Budi Santoso" 
+                                role="Principal Photographer @Lumina" 
+                                content="Sistem invoice dan kontrak digitalnya sangat profesional. Klien saya merasa lebih secure dan bisnis saya terlihat jauh lebih berkelas dibanding kompetitor."
                             />
                         </div>
                     </div>
