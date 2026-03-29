@@ -48,8 +48,7 @@ export default defineConfig(({ mode }) => {
             // Vendor core - split by package for better caching
             if (id.includes('node_modules')) {
               if (id.includes('@supabase')) return 'vendor-supabase';
-              if (id.includes('react-dom')) return 'vendor-react-dom';
-              if (id.includes('react')) return 'vendor-react';
+              if (id.includes('react-dom') || id.includes('react')) return 'vendor-react';
               if (id.includes('lucide-react')) return 'vendor-lucide';
               if (id.includes('html2pdf.js') || id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-pdf';
               return 'vendor-others';
