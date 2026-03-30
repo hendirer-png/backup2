@@ -6,7 +6,7 @@ import { Profile } from '@/types';
 export const useProfile = () => {
     return useQuery<Profile | null>({
         queryKey: ['profile'],
-        queryFn: getProfile,
+        queryFn: () => getProfile(),
         staleTime: 1000 * 60 * 30, // 30 minutes
     });
 };

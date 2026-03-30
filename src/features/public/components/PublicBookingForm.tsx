@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link, useParams } from 'react-router-dom';
 import { REGIONS, Package, AddOn, Profile, Client, Project, Transaction, Card, FinancialPocket, PromoCode, Lead, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType } from '@/types';
 import { useApp } from "@/app/AppContext";
 import { listPackages } from '@/services/packages';
@@ -11,7 +11,7 @@ import { listLeads } from '@/services/leads';
 import { getProfile } from '@/services/profile';
 
 import Modal from '@/shared/ui/Modal';
-import { MessageSquareIcon } from '@/constants';
+import { MessageSquareIcon, CheckCircleIcon, EyeIcon, FileTextIcon, TrashIcon, UploadIcon } from '@/constants';
 import { createClient } from '@/services/clients';
 import { createProject } from '@/services/projects';
 import { createLead as createLeadRow, updateLead as updateLeadRow } from '@/services/leads';
@@ -43,14 +43,6 @@ const initialFormState = {
     address: '',
 };
 
-const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="17 8 12 3 7 8" />
-        <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-);
-
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -69,8 +61,12 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     const showNotification = props.showNotification || contextShowNotification;
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { vendorId } = useParams<{ vendorId: string }>();
     const regionParam = searchParams.get('region');
+    const initialRegion = regionParam ? regionParam.toLowerCase() : null;
     const leadIdParam = searchParams.get('leadId');
+    const packageIdParam = searchParams.get('packageId');
+    const durationParam = searchParams.get('duration');
 
     // Independent state for public form
     const [packages, setPackages] = useState<Package[]>([]);
@@ -95,7 +91,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                     listPockets(),
                     listPromoCodes(),
                     listLeads(),
-                    !props.userProfile ? getProfile() : Promise.resolve(props.userProfile)
+                    !props.userProfile ? getProfile(vendorId) : Promise.resolve(props.userProfile)
                 ]);
                 setPackages(pkgs);
                 setAddOns(ads);
@@ -127,10 +123,11 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [promoFeedback, setPromoFeedback] = useState({ type: '', message: '' });
     const [paymentProof, setPaymentProof] = useState<File | null>(null);
+    const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const formRef = useRef<HTMLDivElement>(null);
     const [leadId, setLeadId] = useState<string | null>(null);
-    const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+    const [selectedRegion, setSelectedRegion] = useState<string | null>(initialRegion);
     const [isLeadDataLoaded, setIsLeadDataLoaded] = useState(false);
     const [isPackagesLoading, setIsPackagesLoading] = useState(true);
 
@@ -200,26 +197,25 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     }, [addOns, selectedRegion]);
 
     // Parse region from URL parameters
+    // Sync region from URL if it changes after initial load
     useEffect(() => {
-        console.log("Page Loaded: Public Booking Form", regionParam);
         if (regionParam) {
             const normalizedRegion = regionParam.toLowerCase();
-            setSelectedRegion(normalizedRegion);
-            if (import.meta.env.DEV) {
-                console.log('Region selected from URL parameter (PublicBookingForm):', normalizedRegion);
+            if (selectedRegion !== normalizedRegion) {
+                setSelectedRegion(normalizedRegion);
             }
-        } else {
+        } else if (selectedRegion !== null) {
             setSelectedRegion(null);
         }
-    }, [regionParam]);
+    }, [regionParam, selectedRegion]);
 
-    // Handle lead ID separately when leads data is available (only once)
+    // Handle URL parameters (region, lead, package, duration)
     useEffect(() => {
-        if (isLeadDataLoaded || leads.length === 0 || !leadIdParam) return;
+        if (leads.length === 0 || isLeadDataLoaded) return;
 
-        setLeadId(leadIdParam);
         const lead = leads.find(l => l.id === leadIdParam);
         if (lead) {
+            setLeadId(lead.id);
             setFormData(prev => ({
                 ...prev,
                 clientName: lead.name,
@@ -228,7 +224,29 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
             }));
             setIsLeadDataLoaded(true);
         }
-    }, [leads, isLeadDataLoaded, leadIdParam]);
+    }, [leads, leadIdParam, isLeadDataLoaded]);
+
+    // Pre-fill package and duration from URL
+    useEffect(() => {
+        if (packages.length === 0 || !packageIdParam) return;
+
+        const pkg = packages.find(p => p.id === packageIdParam);
+        if (pkg) {
+            const normalizedRegion = pkg.region?.toLowerCase();
+            if (normalizedRegion && normalizedRegion !== selectedRegion) {
+                setSelectedRegion(normalizedRegion);
+            }
+
+            const durationOpt = pkg.durationOptions?.find(o => o.label === durationParam) || pkg.durationOptions?.find(o => o.default) || pkg.durationOptions?.[0];
+            
+            setFormData(prev => ({
+                ...prev,
+                packageId: pkg.id,
+                durationSelection: durationOpt?.label || '',
+                unitPrice: durationOpt ? Number(durationOpt.price) : Number(pkg.price)
+            }));
+        }
+    }, [packages, packageIdParam, durationParam]);
 
     const template = userProfile?.publicPageConfig?.template || 'classic';
 
@@ -248,7 +266,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
     }, [userProfile?.termsAndConditions]);
 
 
-    const { totalBeforeDiscount, discountAmount, totalProject, discountText } = useMemo(() => {
+    const { totalBeforeDiscount, discountAmount, totalProject, discountText, activePromoCode } = useMemo(() => {
         const selectedPackage = filteredPackages.find(p => p.id === formData.packageId);
         let packagePrice = selectedPackage?.price || 0;
         const opts = selectedPackage?.durationOptions;
@@ -264,6 +282,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
         const totalBeforeDiscount = packagePrice + addOnsPrice;
         let discountAmount = 0;
         let discountText = '';
+        let activePromoCode = null;
 
         const enteredPromoCode = formData.promoCode.toUpperCase().trim();
         if (enteredPromoCode) {
@@ -280,20 +299,46 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                         discountAmount = promoCode.discountValue;
                         discountText = formatCurrency(promoCode.discountValue);
                     }
-                    setPromoFeedback({ type: 'success', message: `Kode promo diterapkan! Diskon ${discountText}.` });
-                } else {
-                    setPromoFeedback({ type: 'error', message: 'Kode promo tidak valid atau sudah habis.' });
+                    activePromoCode = promoCode;
                 }
-            } else {
-                setPromoFeedback({ type: 'error', message: 'Kode promo tidak ditemukan.' });
             }
-        } else {
-            setPromoFeedback({ type: '', message: '' });
         }
 
         const totalProject = totalBeforeDiscount - discountAmount + transportFee;
-        return { totalBeforeDiscount, discountAmount, totalProject, discountText };
+        return { totalBeforeDiscount, discountAmount, totalProject, discountText, activePromoCode };
     }, [formData.packageId, formData.selectedAddOnIds, formData.promoCode, formData.transportCost, formData.durationSelection, filteredPackages, filteredAddOns, promoCodes]);
+
+    // Handle Promo Feedback separately to avoid infinite re-renders
+    useEffect(() => {
+        const enteredPromoCode = formData.promoCode.toUpperCase().trim();
+        let newFeedback = { type: '', message: '' };
+
+        if (enteredPromoCode) {
+            const promoCode = promoCodes.find(p => p.code === enteredPromoCode && p.isActive);
+            if (promoCode) {
+                const isExpired = promoCode.expiryDate && new Date(promoCode.expiryDate) < new Date();
+                const isMaxedOut = promoCode.maxUsage != null && promoCode.usageCount >= promoCode.maxUsage;
+
+                if (isExpired || isMaxedOut) {
+                    newFeedback = { type: 'error', message: 'Kode promo tidak valid atau sudah habis.' };
+                } else {
+                    const discountDisplay = promoCode.discountType === 'percentage' 
+                        ? `${promoCode.discountValue}%` 
+                        : formatCurrency(promoCode.discountValue);
+                    newFeedback = { type: 'success', message: `Kode promo diterapkan! Diskon ${discountDisplay}.` };
+                }
+            } else {
+                newFeedback = { type: 'error', message: 'Kode promo tidak ditemukan.' };
+            }
+        }
+
+        setPromoFeedback(current => {
+            if (current.type === newFeedback.type && current.message === newFeedback.message) {
+                return current;
+            }
+            return newFeedback;
+        });
+    }, [formData.promoCode, promoCodes]);
 
     const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -346,10 +391,21 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
             const file = e.target.files[0];
             if (file.size > 10 * 1024 * 1024) { // 10MB limit
                 showNotification('Ukuran file tidak boleh melebihi 10MB.');
-                e.target.value = ''; // Reset file input
+                if (e.target) e.target.value = ''; // Reset file input
                 return;
             }
             setPaymentProof(file);
+            
+            // Generate preview for images
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setPaymentProofPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                setPaymentProofPreview(null);
+            }
         }
     };
 
@@ -729,7 +785,7 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                                                         }`}>
                                                         <span className="text-sm font-medium">{opt.label}</span>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-sm font-semibold text-blue-600">{formatCurrency(opt.price)}</span>
+                                                            <span className="text-sm font-semibold text-blue-600">{formatCurrency(opt.price || 0)}</span>
                                                             <input type="radio" name="durationSelection" value={opt.label} checked={formData.durationSelection === opt.label} onChange={handleFormChange} className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
                                                         </div>
                                                     </label>
@@ -799,8 +855,46 @@ const PublicBookingForm: React.FC<PublicBookingProps> = (props) => {
                                             </div>
                                         </div>
                                         {paymentProof && (
-                                            <div className="mt-2 text-sm text-blue-700 bg-blue-100/20 border border-blue-300 p-3 rounded-lg">
-                                                ✓ File terpilih: <span className="font-semibold">{paymentProof.name}</span>
+                                            <div className="mt-4 p-4 border border-blue-200 bg-blue-50/20 rounded-2xl animate-fade-in ring-1 ring-blue-400/20">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-blue-600 uppercase tracking-wider">
+                                                        <CheckCircleIcon className="w-4 h-4" />
+                                                        <span>File Terpilih</span>
+                                                    </div>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => { 
+                                                            setPaymentProof(null); 
+                                                            setPaymentProofPreview(null);
+                                                            const fileInput = document.getElementById('dpPaymentProof') as HTMLInputElement;
+                                                            if (fileInput) fileInput.value = '';
+                                                        }}
+                                                        className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-tight flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-lg transition-colors"
+                                                    >
+                                                        <TrashIcon className="w-3 h-3" />
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                                    {paymentProofPreview ? (
+                                                        <div className="relative group cursor-pointer w-full sm:w-24 aspect-square rounded-xl overflow-hidden shadow-sm border border-blue-200 bg-white flex-shrink-0" onClick={() => window.open(paymentProofPreview, '_blank')}>
+                                                            <img src={paymentProofPreview} alt="Preview" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <EyeIcon className="w-5 h-5 text-white" />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-500 flex-shrink-0">
+                                                            <FileTextIcon className="w-6 h-6" />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold text-blue-900 truncate">{paymentProof.name}</p>
+                                                        <p className="text-[10px] text-blue-600/70 font-medium mt-0.5">{(paymentProof.size / (1024 * 1024)).toFixed(2)} MB • {paymentProof.type.split('/')[1].toUpperCase()}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

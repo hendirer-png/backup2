@@ -81,8 +81,8 @@ export const AppRoutes: React.FC = () => {
                 <Routes>
                     {/* Public Routes with Shared Layout */}
                     <Route element={<PublicLayout />}>
-                        <Route path="/public-packages" element={<PublicPackages />} />
-                        <Route path="/public-booking" element={<PublicBookingForm />} />
+                        <Route path="/public-packages/:vendorId?" element={<PublicPackages />} />
+                        <Route path="/public-booking/:vendorId?" element={<PublicBookingForm />} />
                         <Route path="/public-lead-form" element={<PublicLeadForm />} />
                         <Route path="/feedback" element={<PublicFeedbackForm />} />
                         <Route path="/suggestion-form" element={<SuggestionForm />} />

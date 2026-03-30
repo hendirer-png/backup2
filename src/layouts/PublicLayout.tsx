@@ -1,25 +1,30 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useParams } from 'react-router-dom';
 import { useApp } from '@/app/AppContext';
 import { cleanPhoneNumber } from '@/constants';
 import { getProfile } from '@/services/profile';
 import { Profile } from '@/types';
 
 export const PublicLayout: React.FC = () => {
+    const { vendorId } = useParams<{ vendorId: string }>();
     const { currentUser } = useApp();
     const [profile, setProfile] = React.useState<Profile | null>(null);
 
     React.useEffect(() => {
         const loadProfile = async () => {
+            if (profile && profile.id === vendorId) return; // Optional check if vendorId is valid ID
             try {
-                const data = await getProfile();
-                setProfile(data);
+                const data = await getProfile(vendorId);
+                // Only update if data is different to avoid unnecessary re-renders
+                if (data && (!profile || data.id !== profile.id)) {
+                    setProfile(data);
+                }
             } catch (err) {
                 console.error("Failed to load public profile:", err);
             }
         };
         loadProfile();
-    }, []);
+    }, [vendorId, profile?.id]);
 
     const userProfile = profile || (currentUser as unknown as Profile); // Fallback to currentUser if typed correctly or available
 
@@ -36,15 +41,15 @@ export const PublicLayout: React.FC = () => {
                     </Link>
                 </div>
                 <div className="flex items-center gap-6">
-                    <Link to="/public-packages" className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors">
+                    <Link to={vendorId ? `/public-packages/${vendorId}` : "/public-packages"} className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors">
                         Packages
                     </Link>
-                    <Link to="/public-booking" className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors font-bold text-[#B69255]">
+                    <Link to={vendorId ? `/public-booking/${vendorId}` : "/public-booking"} className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors font-bold text-[#B69255]">
                         Book
                     </Link>
                     {userProfile?.phone && (
-                        <a 
-                            href={`https://wa.me/${cleanPhoneNumber(userProfile.phone)}`} 
+                        <a
+                            href={`https://wa.me/${cleanPhoneNumber(userProfile.phone)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs md:text-sm font-black tracking-widest uppercase hover:text-[#B69255] transition-colors"

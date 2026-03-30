@@ -535,11 +535,18 @@ export interface SecuritySettings {
   twoFactorEnabled: boolean;
 }
 
+export interface TimelineStep {
+  id: string;
+  t: string; // title (matching existing usage)
+  d: string; // description (matching existing usage)
+}
+
 export interface PublicPageConfig {
   template: 'classic' | 'modern' | 'gallery';
   title: string;
   introduction: string;
   galleryImages: string[]; // Array of base64 image strings or Supabase Storage URLs
+  timeline?: TimelineStep[]; // Optional customizable timeline steps
 }
 
 export interface Profile {

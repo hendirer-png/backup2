@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode } from '@/types';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
+import { Package, AddOn, Profile, Client, Project, Transaction, Lead, Notification, Card, ClientStatus, PaymentStatus, TransactionType, LeadStatus, ContactChannel, ClientType, BookingStatus, ViewType, PromoCode, TimelineStep } from '@/types';
 import { useApp } from "@/app/AppContext";
 import Modal from '@/shared/ui/Modal';
 import { CheckIcon, CameraIcon, WhatsappIcon, cleanPhoneNumber } from '@/constants';
@@ -66,20 +66,29 @@ const AddOnItem: React.FC<{ addOn: AddOn }> = ({ addOn }) => {
 const initialForm = {
     clientName: '', email: '', phone: '', instagram: '', date: new Date().toISOString().split('T')[0], location: '', transportCost: '', selectedAddOnIds: [] as string[], promoCode: '', dp: '', dpPaymentRef: '', durationSelection: '' as string, unitPrice: undefined as number | undefined
 };
+const EMPTY_ARRAY: any[] = [];
 
-
+const DEFAULT_TIMELINE: TimelineStep[] = [
+    { id: '1', t: "Konsep & Konsultasi", d: "H-90 • Mematangkan visi hari bahagia Anda bersama tim kami." },
+    { id: '2', t: "Pemilihan Vendor & Detail", d: "H-60 • Kurasi terbaik untuk setiap aspek dokumentasi." },
+    { id: '3', t: "Technical Meeting", d: "H-14 • Memastikan setiap detail berjalan sempurna." },
+    { id: '4', t: "The Wedding Day", d: "Hari H • Kami mengabadikan setiap emosi dengan tulus." },
+    { id: '5', t: "Final Handover", d: "H+30 • Hasil karya terbaik sampai di tangan Anda." }
+];
 
 const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
+    const navigate = useNavigate();
     const { 
         showNotification: contextShowNotification 
     } = useApp();
 
     const [searchParams] = useSearchParams();
+    const { vendorId } = useParams<{ vendorId: string }>();
     const regionParam = searchParams.get('region');
 
     const initialUserProfile = props.userProfile;
     const showNotification = props.showNotification || contextShowNotification;
-    const { setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = [], projects = [], promoCodes = [], setPromoCodes } = props;
+    const { setClients, setProjects, setTransactions, setCards, setLeads, addNotification, cards = EMPTY_ARRAY, projects = EMPTY_ARRAY, promoCodes = EMPTY_ARRAY, setPromoCodes } = props;
 
     const [packages, setPackages] = useState<Package[]>([]);
     const [addOns, setAddOns] = useState<AddOn[]>([]);
@@ -87,7 +96,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
     const [isLoading, setIsLoading] = useState(true);
 
     const [error, setError] = useState<string | null>(null);
-    const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+    const initialRegion = regionParam ? regionParam.toLowerCase() : null;
+    const [selectedRegion, setSelectedRegion] = useState<string | null>(initialRegion);
 
     // Safe destructure — defer until userProfile is loaded (guarded below)
 
@@ -114,7 +124,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
 
                 // Load profile if not provided
                 if (!initialUserProfile) {
-                    const profileData = await getProfile();
+                    const profileData = await getProfile(vendorId);
                     if (profileData) {
                         setUserProfile(profileData);
                     }
@@ -132,22 +142,21 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
     }, []);
 
     // Parse region from URL parameters
+    // Sync region from URL if it changes after initial load
     useEffect(() => {
-        console.log("Page Loaded: Public Packages", regionParam);
         if (regionParam) {
             const normalizedRegion = regionParam.toLowerCase();
-            setSelectedRegion(normalizedRegion);
-            if (import.meta.env.DEV) {
-                console.log('Region selected from URL parameter (PublicPackages):', normalizedRegion);
+            if (selectedRegion !== normalizedRegion) {
+                setSelectedRegion(normalizedRegion);
             }
-        } else {
+        } else if (selectedRegion !== null) {
             setSelectedRegion(null);
         }
-    }, [regionParam]);
+    }, [regionParam, selectedRegion]);
     const template = userProfile?.publicPageConfig?.template ?? 'modern';
     const visiblePackages = useMemo(() => {
         if (!selectedRegion) return packages;
-        return packages.filter(p => (p.region ? p.region === selectedRegion : false));
+        return packages.filter(p => (p.region ? p.region.toLowerCase() === selectedRegion.toLowerCase() : false));
     }, [packages, selectedRegion]);
 
     const [bookingModal, setBookingModal] = useState<{ isOpen: boolean; pkg: Package | null }>({ isOpen: false, pkg: null });
@@ -166,12 +175,12 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
     const packagesByCategory = useMemo(() => {
         const grouped: Record<string, Package[]> = {};
 
-        if (!Array.isArray(packages)) {
-            console.error('Packages is not an array:', packages);
+        if (!Array.isArray(visiblePackages)) {
+            console.error('visiblePackages is not an array:', visiblePackages);
             return {};
         }
 
-        for (const pkg of packages) {
+        for (const pkg of visiblePackages) {
             if (!pkg) continue;
 
             const category = pkg.category || 'Lainnya';
@@ -198,7 +207,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
         });
 
         return orderedGrouped;
-    }, [packages, userProfile?.packageCategories]);
+    }, [visiblePackages, userProfile?.packageCategories]);
 
     const mostPopularPackageId = useMemo(() => {
         if (projects.length === 0) return null;
@@ -245,8 +254,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
         return `https://wa.me/${cleanPhoneNumber(userProfile.phone)}?text=${encodeURIComponent(message)}`;
     }, [isSubmitted, formData.clientName, bookingModal.pkg, userProfile?.phone]);
 
-    const { totalBeforeDiscount, discountAmount, totalProject, discountText } = useMemo(() => {
-        if (!bookingModal.pkg) return { totalBeforeDiscount: 0, discountAmount: 0, totalProject: 0, discountText: '' };
+    const { totalBeforeDiscount, discountAmount, totalProject, discountText, activePromoCode } = useMemo(() => {
+        if (!bookingModal.pkg) return { totalBeforeDiscount: 0, discountAmount: 0, totalProject: 0, discountText: '', activePromoCode: null };
         // Determine package price based on selected duration option (flexible labels)
         let packagePrice = bookingModal.pkg.price;
         const opts = bookingModal.pkg.durationOptions;
@@ -262,6 +271,7 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
         const totalBeforeDiscount = packagePrice + addOnsPrice;
         let discountAmount = 0;
         let discountText = '';
+        let activePromoCode = null;
 
         const enteredPromoCode = formData.promoCode.toUpperCase().trim();
         if (enteredPromoCode) {
@@ -278,31 +288,63 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
                         discountAmount = promoCode.discountValue;
                         discountText = formatCurrency(promoCode.discountValue);
                     }
-                    setPromoFeedback({ type: 'success', message: `Kode promo diterapkan! Diskon ${discountText}.` });
-                } else {
-                    setPromoFeedback({ type: 'error', message: 'Kode promo tidak valid atau sudah habis.' });
+                    activePromoCode = promoCode;
                 }
-            } else {
-                setPromoFeedback({ type: 'error', message: 'Kode promo tidak ditemukan.' });
             }
-        } else {
-            setPromoFeedback({ type: '', message: '' });
         }
 
         const totalProject = totalBeforeDiscount - discountAmount + transportFee;
-        return { totalBeforeDiscount, discountAmount, totalProject, discountText };
+        return { totalBeforeDiscount, discountAmount, totalProject, discountText, activePromoCode };
     }, [formData.selectedAddOnIds, formData.promoCode, formData.transportCost, formData.durationSelection, bookingModal.pkg, addOns, promoCodes]);
 
+    // Handle Promo Feedback separately to avoid infinite re-renders
+    useEffect(() => {
+        const enteredPromoCode = formData.promoCode.toUpperCase().trim();
+        let newFeedback = { type: '', message: '' };
+
+        if (enteredPromoCode) {
+            const promoCode = promoCodes.find(p => p.code === enteredPromoCode && p.isActive);
+            if (promoCode) {
+                const isExpired = promoCode.expiryDate && new Date(promoCode.expiryDate) < new Date();
+                const isMaxedOut = promoCode.maxUsage != null && promoCode.usageCount >= promoCode.maxUsage;
+
+                if (isExpired || isMaxedOut) {
+                    newFeedback = { type: 'error', message: 'Kode promo tidak valid atau sudah habis.' };
+                } else {
+                    const discountDisplay = promoCode.discountType === 'percentage' 
+                        ? `${promoCode.discountValue}%` 
+                        : formatCurrency(promoCode.discountValue);
+                    newFeedback = { type: 'success', message: `Kode promo diterapkan! Diskon ${discountDisplay}.` };
+                }
+            } else {
+                newFeedback = { type: 'error', message: 'Kode promo tidak ditemukan.' };
+            }
+        }
+
+        // Only update if the feedback has actually changed
+        setPromoFeedback(current => {
+            if (current.type === newFeedback.type && current.message === newFeedback.message) {
+                return current;
+            }
+            return newFeedback;
+        });
+    }, [formData.promoCode, promoCodes]);
+
     const handleOpenBookingModal = (pkg: Package) => {
-        setBookingModal({ isOpen: true, pkg });
-        setIsSubmitted(false);
-        // Set default duration selection if durationOptions exist
-        const defaultOpt = (pkg.durationOptions && pkg.durationOptions.length > 0)
-            ? (pkg.durationOptions.find(o => o.default) || pkg.durationOptions[0])
-            : undefined;
-        setFormData({ ...initialForm, durationSelection: defaultOpt?.label || '', unitPrice: defaultOpt ? Number(defaultOpt.price) : pkg.price });
-        setPaymentProof(null);
-        setPromoFeedback({ type: '', message: '' });
+        // Build the booking URL with relevant parameters for pre-filling
+        const params = new URLSearchParams();
+        if (selectedRegion) params.set('region', selectedRegion.toLowerCase());
+        params.set('packageId', pkg.id);
+        
+        // Find default duration label to pass as parameter
+        const defaultDuration = (pkg.durationOptions && pkg.durationOptions.length > 0)
+            ? (pkg.durationOptions.find(o => o.default) || pkg.durationOptions[0]).label
+            : '';
+        if (defaultDuration) params.set('duration', defaultDuration);
+
+        // Redirect to dedicated booking page
+        const bookingPath = vendorId ? `/public-booking/${vendorId}` : '/public-booking';
+        navigate(`${bookingPath}?${params.toString()}`);
     };
 
     const handleCloseBookingModal = () => {
@@ -575,14 +617,8 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
                                 <div className="overflow-hidden">
                                     <div className="space-y-10">
                                         <div className="relative pl-8 border-l border-[#B69255]/20 space-y-8">
-                                            {[
-                                                { t: "Konsep & Konsultasi", d: "H-90 • Mematangkan visi hari bahagia Anda bersama tim kami." },
-                                                { t: "Pemilihan Vendor & Detail", d: "H-60 • Kurasi terbaik untuk setiap aspek dokumentasi." },
-                                                { t: "Technical Meeting", d: "H-14 • Memastikan setiap detail berjalan sempurna." },
-                                                { t: "The Wedding Day", d: "Hari H • Kami mengabadikan setiap emosi dengan tulus." },
-                                                { t: "Final Handover", d: "H+30 • Hasil karya terbaik sampai di tangan Anda." }
-                                            ].map((step, i) => (
-                                                <div key={i} className="relative">
+                                            {(userProfile.publicPageConfig?.timeline || DEFAULT_TIMELINE).map((step, i) => (
+                                                <div key={step.id || i} className="relative">
                                                     <div className="absolute -left-[37px] top-1 w-4 h-4 rounded-full bg-[#B69255] border-4 border-white shadow-sm"></div>
                                                     <h4 className="font-extrabold text-[#1A1A1A] text-lg mb-1">{step.t}</h4>
                                                     <p className="text-[#666666] text-sm font-medium">{step.d}</p>
@@ -662,22 +698,74 @@ const PublicPackages: React.FC<PublicPackagesProps> = (props) => {
                                             
                                             <div className="px-8 pt-8 pb-10 flex flex-col flex-grow">
                                                 <h4 className="text-xl md:text-2xl font-black mb-2 text-[#1A1A1A]">{pkg.name}</h4>
-                                                <span className="text-2xl font-black text-[#B69255] mb-8">{formatCurrency(pkg.price)}</span>
+                                                <div className="mb-8">
+                                                    <span className="text-2xl font-black text-[#B69255]">{formatCurrency(pkg.price)}</span>
+                                                    {pkg.durationOptions && pkg.durationOptions.length > 0 && (
+                                                        <div className="mt-2 space-y-1">
+                                                            {pkg.durationOptions.map((opt, i) => (
+                                                                <div key={i} className="flex justify-between items-center text-[10px] font-black text-[#B69255]/60 uppercase tracking-widest border-t border-[#B69255]/10 pt-1 mt-1">
+                                                                    <span>{opt.label}</span>
+                                                                    <span>{formatCurrency(opt.price)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 
-                                                <div className="space-y-4 mb-10 flex-grow">
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        {[
-                                                            { label: pkg.photographers, icon: 'camera' },
-                                                            { label: pkg.videographers, icon: 'video' },
-                                                            ...(pkg.digitalItems.map(item => ({ label: item, icon: 'digital' }))),
-                                                            ...(pkg.physicalItems.map(item => ({ label: item.name, icon: 'physical' })))
-                                                        ].filter(item => item.label).map((item, i) => (
-                                                            <div key={i} className="flex items-center gap-3 text-sm font-semibold text-[#666666]">
-                                                                <div className="w-1 h-1 rounded-full bg-[#B69255]"></div>
-                                                                <span className="leading-snug">{item.label}</span>
+                                                <div className="space-y-6 mb-10 flex-grow">
+                                                    {(() => {
+                                                        const defaultOpt = pkg.durationOptions?.find(o => o.default) || pkg.durationOptions?.[0];
+                                                        
+                                                        const timeText = [pkg.photographers, pkg.videographers, defaultOpt?.photographers].filter(Boolean).join(' & ');
+                                                        const digitalItems = [...(pkg.digitalItems || []), ...(defaultOpt?.digitalItems || [])].filter(Boolean);
+                                                        const physicalItems = [...(pkg.physicalItems || []), ...(defaultOpt?.physicalItems || [])].filter(item => item?.name);
+
+                                                        return (
+                                                            <div className="space-y-5">
+                                                                {timeText && (
+                                                                    <div>
+                                                                        <h5 className="text-[10px] font-black uppercase tracking-widest text-[#B69255] mb-2">Tim</h5>
+                                                                        <p className="text-sm font-bold text-[#666666] leading-snug">{timeText}</p>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {digitalItems.length > 0 && (
+                                                                    <div>
+                                                                        <h5 className="text-[10px] font-black uppercase tracking-widest text-[#B69255] mb-2">Deskripsi Package</h5>
+                                                                        <div className="space-y-2">
+                                                                            {digitalItems.map((item, i) => (
+                                                                                <div key={i} className="flex items-start gap-3 text-sm font-semibold text-[#666666]">
+                                                                                    <div className="w-1 h-1 rounded-full bg-[#B69255] mt-1.5 flex-shrink-0"></div>
+                                                                                    <span className="leading-snug">{item}</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {physicalItems.length > 0 && (
+                                                                    <div>
+                                                                        <h5 className="text-[10px] font-black uppercase tracking-widest text-[#B69255] mb-2">Vendor (Allpackage)</h5>
+                                                                        <div className="space-y-2">
+                                                                            {physicalItems.map((item, i) => (
+                                                                                <div key={i} className="flex items-start gap-3 text-sm font-semibold text-[#666666]">
+                                                                                    <div className="w-1 h-1 rounded-full bg-[#B69255] mt-1.5 flex-shrink-0"></div>
+                                                                                    <span className="leading-snug">{item.name}</span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {pkg.processingTime && (
+                                                                    <div className="pt-2 border-t border-[#1A1A1A]/5 flex justify-between items-center">
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#B69255]">Pengerjaan</span>
+                                                                        <span className="text-xs font-black text-[#1A1A1A]">{pkg.processingTime}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ))}
-                                                    </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 
                                                 <button onClick={() => handleOpenBookingModal(pkg)} className="premium-button w-full py-5 rounded-[1.5rem] font-bold tracking-wide uppercase text-xs shadow-xl shadow-black/5">

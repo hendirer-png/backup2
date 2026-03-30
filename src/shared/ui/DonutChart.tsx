@@ -8,9 +8,10 @@ interface DonutChartProps {
   data: { label: string; value: number; color: string }[];
   className?: string;
   showValues?: boolean;
+  onClick?: (item: { label: string; value: number; color: string }, index: number) => void;
 }
 
-const DonutChart: React.FC<DonutChartProps> = React.memo(({ data, className = '', showValues = false }) => {
+const DonutChart: React.FC<DonutChartProps> = React.memo(({ data, className = '', showValues = false, onClick }) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const total = data.reduce((sum, item) => sum + item.value, 0);
 
@@ -62,6 +63,7 @@ const DonutChart: React.FC<DonutChartProps> = React.memo(({ data, className = ''
                                 }}
                                 onMouseEnter={() => setHoveredIndex(index)}
                                 onMouseLeave={() => setHoveredIndex(null)}
+                                onClick={() => onClick && onClick(item, index)}
                             />
                         );
                         accumulatedPercentage += percentage;
@@ -92,6 +94,7 @@ const DonutChart: React.FC<DonutChartProps> = React.memo(({ data, className = ''
                             `}
                             onMouseEnter={() => setHoveredIndex(index)}
                             onMouseLeave={() => setHoveredIndex(null)}
+                            onClick={() => onClick && onClick(item, index)}
                         >
                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 <span 

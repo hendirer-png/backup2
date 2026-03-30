@@ -7,7 +7,8 @@ import { TeamSettingsTab } from '@/features/settings/components/TeamSettingsTab'
 import { PackageSettingsTab } from '@/features/settings/components/PackageSettingsTab';
 import { ProjectSettingsTab } from '@/features/settings/components/ProjectSettingsTab';
 import { MessageSettingsTab } from '@/features/settings/components/MessageSettingsTab';
-import { UsersIcon, CashIcon, PackageIcon, LayoutGridIcon, MessageSquareIcon } from '@/constants';
+import { PublicPageSettingsTab } from '@/features/settings/components/PublicPageSettingsTab';
+import { UsersIcon, CashIcon, PackageIcon, LayoutGridIcon, MessageSquareIcon, GlobeIcon } from '@/constants';
 
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useProjects } from '@/features/projects/api/useProjects';
@@ -29,6 +30,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
         const next = typeof updater === 'function' ? updater(current) : updater;
         queryClient.setQueryData(['users'], next);
         queryClient.invalidateQueries({ queryKey: ['users'] });
+    };
+
+    const setProfile = (updater: any) => {
+        const current = queryClient.getQueryData(['profile']);
+        const next = typeof updater === 'function' ? updater(current) : updater;
+        queryClient.setQueryData(['profile'], next);
     };
 
     const {
@@ -66,7 +73,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
                         </div>
                         <h2 className="text-xl font-bold text-brand-text-light">Profil Vendor</h2>
                     </div>
-                    <ProfileSettingsTab profile={profile} setProfile={() => {}} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />
+                    <ProfileSettingsTab profile={profile} setProfile={setProfile} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />
+                </section>
+
+                <section id="public-page" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-brand-accent/10 rounded-xl">
+                            <GlobeIcon className="w-5 h-5 text-brand-accent" />
+                        </div>
+                        <h2 className="text-xl font-bold text-brand-text-light">Konfigurasi Halaman Publik</h2>
+                    </div>
+                    <PublicPageSettingsTab profile={profile} setProfile={setProfile} handleProfileSubmit={handleProfileSubmit} isSaving={isSaving} showSuccess={showSuccess} saveError={saveError} />
                 </section>
 
                 <section id="finance" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
@@ -106,7 +123,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
                         </div>
                         <h2 className="text-xl font-bold text-brand-text-light">Project & Status</h2>
                     </div>
-                    <ProjectSettingsTab profile={profile} setProfile={() => {}} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />
+                    <ProjectSettingsTab profile={profile} setProfile={setProfile} projects={projects} projectTypeInput={prjTypeInput} setProjectTypeInput={setPrjTypeInput} editingProjectType={editPrjType} setEditingProjectType={setEditPrjType} eventTypeInput={evtTypeInput} setEventTypeInput={setEvtTypeInput} editingEventType={editEvtType} setEditingEventType={setEditEvtType} handleCategoryUpdate={handleCategoryUpdate} showNotification={showNotification} />
                 </section>
 
                 <section id="messages" className="scroll-mt-24 border-t border-brand-border/40 pt-12">
@@ -116,7 +133,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ currentUser }) => {
                         </div>
                         <h2 className="text-xl font-bold text-brand-text-light">Chat Templates</h2>
                     </div>
-                    <MessageSettingsTab profile={profile} setProfile={() => {}} showSuccess={showNotification} />
+                    <MessageSettingsTab profile={profile} setProfile={setProfile} showSuccess={showNotification} />
                 </section>
             </main>
         </div>

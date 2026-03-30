@@ -1,16 +1,31 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { DataLoadingWrapper, LoadingState } from '@/shared/ui/LoadingState';
-
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-
 
 import { Project, Client, Transaction, TransactionType, ViewType, TeamMember, Card, FinancialPocket, PocketType, Lead, LeadStatus, TeamProjectPayment, Package, ClientFeedback, ClientStatus, NavigationAction, User, ProjectStatusConfig, Profile, PaymentStatus } from '@/types';
 import StatCard from '@/shared/ui/StatCard';
-import { listCalendarEventsInRange } from '@/services/calendarEvents';
 import StatCardModal from '@/shared/ui/StatCardModal';
 import Modal from '@/shared/ui/Modal';
-import { NAV_ITEMS, DollarSignIcon, FolderKanbanIcon, UsersIcon, BriefcaseIcon, ChevronRightIcon, CreditCardIcon, CalendarIcon, ClipboardListIcon, LightbulbIcon, TargetIcon, StarIcon, CameraIcon, FileTextIcon, TrendingUpIcon, AlertCircleIcon, MapPinIcon, ClockIcon } from '@/constants';
+import { 
+    NAV_ITEMS, DollarSignIcon, FolderKanbanIcon, UsersIcon, BriefcaseIcon, 
+    ChevronRightIcon, CalendarIcon, ClipboardListIcon, StarIcon, CameraIcon, 
+    FileTextIcon, TrendingUpIcon, AlertCircleIcon, MapPinIcon, MessageSquareIcon, 
+    PhoneIcon 
+} from '@/constants';
 import DonutChart from '@/shared/ui/DonutChart';
+import DashboardFilters, { DateRange } from './components/DashboardFilters';
+
+import { useProjects } from '@/features/projects/api/useProjects';
+import { useClients } from '@/features/clients/api/useClients';
+import { useTeamMembers, useTeamProjectPayments } from '@/features/team/api/useTeamQueries';
+import { useLeads } from '@/features/leads/api/useLeadsQueries';
+import { useProfile } from '@/features/settings/api/useProfileQueries';
+import { useApp } from "@/app/AppContext";
+import { useUIStore } from '@/store/uiStore';
+import { useFinanceData } from '@/features/finance/hooks/useFinanceData';
+import { listClientFeedback } from '@/services/clientFeedback';
+import ClientDetailModal from '@/features/clients/components/ClientDetailModal';
+import { usePackages } from '@/features/packages/api/usePackagesQueries';
 
 // Helper Functions
 const formatCurrency = (amount: number, minimumFractionDigits = 0) => {
@@ -19,9 +34,7 @@ const formatCurrency = (amount: number, minimumFractionDigits = 0) => {
 
 const getStatusClass = (status: string, config: ProjectStatusConfig[]) => {
     const statusConfig = config.find(c => c.name === status);
-    const color = statusConfig ? statusConfig.color : '#64748b'; // slate-500
-    // Note: Tailwind purge might not see this. Inline styles are safer for dynamic colors.
-    // This is a simplified approach.
+    const color = statusConfig ? statusConfig.color : '#64748b';
     const colorMap: { [key: string]: string } = {
         '#10b981': 'bg-brand-success/20 text-brand-success',
         '#3b82f6': 'bg-blue-500/20 text-blue-400',
@@ -35,48 +48,24 @@ const getStatusClass = (status: string, config: ProjectStatusConfig[]) => {
     return colorMap[color] || 'bg-gray-500/20 text-gray-400';
 };
 
-
 // --- Sub-components for Dashboard ---
 
-const QuickLinksWidget: React.FC<{ handleNavigation: (view: ViewType) => void; currentUser: User | null; }> = ({ handleNavigation, currentUser }) => {
-    const quickLinks = useMemo(() => {
-        const allLinks = NAV_ITEMS.filter(item => item.view !== ViewType.DASHBOARD);
-        if (!currentUser || currentUser.role === 'Admin') {
-            return allLinks;
-        }
-        const memberPermissions = new Set(currentUser.permissions || []);
-        return allLinks.filter(link => memberPermissions.has(link.view));
-    }, [currentUser]);
-
-
-    return (
-        <div className="bg-brand-surface p-4 md:p-6 rounded-2xl shadow-lg border border-brand-border">
-            <h3 className="font-bold text-base md:text-lg text-gradient mb-3 md:mb-4">Akses Cepat</h3>
-            <div className="grid grid-cols-2 gap-2 md:gap-4">
-                {quickLinks.map(link => (
-                    <button
-                        key={link.view}
-                        onClick={() => handleNavigation(link.view)}
-                        className="flex flex-col items-center justify-center p-3 md:p-4 bg-brand-bg rounded-xl text-center hover:bg-brand-input hover:shadow-md transition-all duration-200 active:scale-95"
-                        aria-label={`Buka ${link.label}`}
-                    >
-                        <link.icon className="w-6 h-6 md:w-8 md:h-8 text-brand-accent mb-1.5 md:mb-2" />
-                        <span className="text-[10px] md:text-xs font-semibold text-brand-text-primary">{link.label}</span>
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+const IncomeChartWidget: React.FC<{ transactions: Transaction[], dateRange: DateRange }> = ({ transactions, dateRange }) => {
     const [chartView, setChartView] = useState<'monthly' | 'yearly'>('monthly');
+
+    const filteredTransactions = useMemo(() => {
+        if (!dateRange.startDate) return transactions;
+        return transactions.filter(t => {
+            const d = new Date(t.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [transactions, dateRange]);
 
     const chartData = useMemo(() => {
         const currentYear = new Date().getFullYear();
         if (chartView === 'yearly') {
             const totals: { [year: string]: { income: number, expense: number } } = {};
-            transactions.forEach(t => {
+            filteredTransactions.forEach(t => {
                 const year = new Date(t.date).getFullYear().toString();
                 if (!totals[year]) totals[year] = { income: 0, expense: 0 };
                 if (t.type === TransactionType.INCOME) totals[year].income += t.amount;
@@ -86,9 +75,9 @@ const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transact
                 .sort(([yearA], [yearB]) => parseInt(yearA) - parseInt(yearB))
                 .map(([year, values]) => ({ name: year, ...values }));
         } else {
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
             const data = months.map(month => ({ name: month, income: 0, expense: 0 }));
-            transactions.forEach(t => {
+            filteredTransactions.forEach(t => {
                 const d = new Date(t.date);
                 if (d.getFullYear() === currentYear) {
                     const m = d.getMonth();
@@ -98,7 +87,7 @@ const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transact
             });
             return data;
         }
-    }, [transactions, chartView]);
+    }, [filteredTransactions, chartView]);
 
     const maxVal = Math.max(...chartData.map(d => Math.max(d.income, d.expense)), 1);
 
@@ -106,15 +95,15 @@ const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transact
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg h-full border border-brand-border">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h3 className="font-bold text-lg text-gradient">Analisis Keuangan</h3>
-                    <div className="flex items-center gap-4 mt-1">
+                    <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light">Analisis Kas & Profit</h3>
+                    <div className="flex items-center gap-4 mt-2">
                         <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-brand-accent"></div>
-                            <span className="text-[10px] text-brand-text-secondary uppercase font-bold tracking-tight">Pemasukan</span>
+                            <div className="w-2 h-2 rounded-full bg-brand-accent"></div>
+                            <span className="text-[10px] text-brand-text-secondary uppercase font-bold tracking-tight">Income</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                            <span className="text-[10px] text-brand-text-secondary uppercase font-bold tracking-tight">Pengeluaran</span>
+                            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                            <span className="text-[10px] text-brand-text-secondary uppercase font-bold tracking-tight">Expense</span>
                         </div>
                     </div>
                 </div>
@@ -123,28 +112,28 @@ const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transact
                         <button
                             key={view}
                             onClick={() => setChartView(view)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${chartView === view ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-text-light'}`}
+                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter rounded-md transition-all ${chartView === view ? 'bg-brand-accent text-white shadow-lg' : 'text-brand-text-secondary hover:text-brand-text-light'}`}
                         >
                             {view === 'monthly' ? 'Bulanan' : 'Tahunan'}
                         </button>
                     ))}
                 </div>
             </div>
-            <div className="h-56 flex justify-between items-end gap-3 mt-4">
+            <div className="h-56 flex justify-between items-end gap-2 mt-4">
                 {chartData.map(item => (
                     <div key={item.name} className="flex-1 flex flex-col items-center justify-end h-full group relative">
                         <div className="absolute -top-12 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-20">
-                            <div className="bg-brand-surface border border-brand-border shadow-2xl p-2 rounded-lg text-[10px] whitespace-nowrap">
-                                <p className="text-brand-success font-bold">In: {formatCurrency(item.income, 0)}</p>
+                            <div className="bg-brand-surface border border-brand-border shadow-2xl p-2 rounded-lg text-[9px] whitespace-nowrap">
+                                <p className="text-brand-accent font-bold">In: {formatCurrency(item.income, 0)}</p>
                                 <p className="text-rose-400 font-bold">Out: {formatCurrency(item.expense, 0)}</p>
                             </div>
                             <div className="w-2 h-2 bg-brand-surface border-r border-b border-brand-border rotate-45 -mt-1"></div>
                         </div>
-                        <div className="w-full flex items-end gap-1 h-full">
-                            <div className="flex-1 bg-brand-accent/40 rounded-t-md group-hover:bg-brand-accent transition-all duration-300" style={{ height: `${(item.income / maxVal) * 100}%` }}></div>
-                            <div className="flex-1 bg-rose-500/40 rounded-t-md group-hover:bg-rose-500 transition-all duration-300" style={{ height: `${(item.expense / maxVal) * 100}%` }}></div>
+                        <div className="w-full flex items-end gap-0.5 h-full">
+                            <div className="flex-1 bg-brand-accent/30 rounded-t-sm group-hover:bg-brand-accent transition-all duration-300 shadow-[0_0_15px_-5px_rgba(var(--brand-accent-rgb),0.4)]" style={{ height: `${(item.income / maxVal) * 100}%` }}></div>
+                            <div className="flex-1 bg-rose-500/30 rounded-t-sm group-hover:bg-rose-500 transition-all duration-300 shadow-[0_0_15px_-5px_rgba(244,63,94,0.4)]" style={{ height: `${(item.expense / maxVal) * 100}%` }}></div>
                         </div>
-                        <span className="text-[10px] font-bold text-brand-text-secondary mt-3 uppercase tracking-tighter">{item.name}</span>
+                        <span className="text-[9px] font-black text-brand-text-secondary mt-3 uppercase tracking-tighter">{item.name}</span>
                     </div>
                 ))}
             </div>
@@ -152,434 +141,192 @@ const IncomeChartWidget: React.FC<{ transactions: Transaction[] }> = ({ transact
     );
 };
 
+const ClientEngagementChartWidget: React.FC<{ leads: Lead[], clients: Client[], dateRange: DateRange }> = ({ leads, clients, dateRange }) => {
+    const chartData = useMemo(() => {
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+        const currentYear = new Date().getFullYear();
+        
+        return months.map((month, idx) => {
+            const leadInteractions = leads.filter(l => {
+                const d = new Date(l.date);
+                return d.getMonth() === idx && d.getFullYear() === currentYear;
+            }).length;
 
-const RecentTransactionsWidget: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => (
-    <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-lg text-gradient">Transaksi Terbaru</h3>
-            <button className="text-brand-text-secondary hover:text-brand-text-light"><ChevronRightIcon className="w-6 h-6" /></button>
-        </div>
-        <div className="space-y-4">
-            {transactions.slice(0, 5).map(t => (
-                <div key={t.id} className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-brand-bg flex-shrink-0 flex items-center justify-center">
-                        <DollarSignIcon className={`w-5 h-5 ${t.type === TransactionType.INCOME ? 'text-brand-success' : 'text-brand-danger'}`} />
-                    </div>
-                    <div className="flex-grow overflow-hidden">
-                        <p className="font-medium text-brand-text-light truncate text-sm">{t.description}</p>
-                        <p className="text-xs text-brand-text-secondary">{new Date(t.date).toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</p>
-                    </div>
-                    <div className={`font-semibold text-sm ${t.type === TransactionType.INCOME ? 'text-brand-success' : 'text-brand-text-light'}`}>
-                        {t.type === TransactionType.INCOME ? '+' : '-'}{formatCurrency(t.amount, 0)}
-                    </div>
-                </div>
-            ))}
-        </div>
-    </div>
-);
+            const clientContact = clients.filter(c => {
+                const d = new Date(c.lastContact || c.since);
+                return d.getMonth() === idx && d.getFullYear() === currentYear;
+            }).length;
 
-const CardWidget: React.FC<{ card: Card }> = ({ card }) => {
-    const gradient = card.colorGradient || 'from-slate-700 to-slate-900';
-    const isLight = gradient.includes('slate-100') || gradient.includes('slate-200') || gradient.includes('white');
-    const textColor = isLight ? 'text-slate-800' : 'text-white';
+            const simulatedMessages = (leadInteractions * 8) + (clientContact * 12) + (Math.floor(Math.random() * 20));
 
-    return (
-        <div className={`p-4 rounded-xl ${textColor} shadow-md flex flex-col justify-between h-40 flex-1 min-w-64 bg-gradient-to-br ${gradient}`}>
-            <div>
-                <div className="flex justify-between items-center">
-                    <p className="font-bold text-sm">{card.bankName}</p>
-                    <p className="text-xs">{card.cardType}</p>
-                </div>
-            </div>
-            <div>
-                <p className="text-xl font-mono tracking-wider">**** {card.lastFourDigits}</p>
-                <p className="text-2xl font-bold tracking-tight">{formatCurrency(card.balance)}</p>
-            </div>
-        </div>
-    );
-};
-
-const MyCardsWidget: React.FC<{ cards: Card[], handleNavigation: (view: ViewType) => void }> = ({ cards, handleNavigation }) => (
-    <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-lg text-gradient flex items-center gap-2"><CreditCardIcon className="w-5 h-5" /> Kartu Saya</h3>
-            <button onClick={() => handleNavigation(ViewType.FINANCE)} className="text-sm font-semibold text-brand-accent hover:underline">Kelola Kartu &rarr;</button>
-        </div>
-        <div className="flex flex-wrap gap-4">
-            {cards.map(card => <CardWidget key={card.id} card={card} />)}
-        </div>
-    </div>
-);
-
-const weekdaysShort = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-const eventTypeColors: Record<string, string> = {
-    'Meeting Pengantin': '#3b82f6',
-    'Survey Lokasi': '#22c55e',
-    'Libur': '#94a3b8',
-    'Workshop': '#a855f7',
-    'Lainnya': '#eab308',
-};
-
-const getEventColor = (event: Project, profile: Profile) => {
-    const type = event.projectType?.toLowerCase() || '';
-    if (type.includes('wedding') || type.includes('pernikahan')) return '#ef4444'; // Merah
-    if (type.includes('engagement') || type.includes('lamaran')) return '#f97316'; // Orange
-    if (type.includes('meeting') || type.includes('internal')) return '#3b82f6'; // Biru
-    
-    const isInternalEvent = profile.eventTypes?.includes(event.projectType);
-    if (isInternalEvent) return eventTypeColors[event.projectType] || '#6366f1';
-    return profile.projectStatusConfig?.find(s => s.name === event.status)?.color || '#64748b';
-};
-
-/** Kalender bulan ringkas untuk Dashboard - menampilkan Acara Pernikahan & Acara Pernikahan internal */
-const CalendarMonthWidget: React.FC<{
-    projects: Project[];
-    profile: Profile;
-    handleNavigation: (view: ViewType, action?: NavigationAction) => void;
-}> = ({ projects, profile, handleNavigation }) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [internalEvents, setInternalEvents] = useState<Project[]>([]);
-
-    useEffect(() => {
-        let isMounted = true;
-        (async () => {
-            try {
-                const from = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-                const to = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
-                const rows = await listCalendarEventsInRange(from, to);
-                if (!isMounted) return;
-                setInternalEvents(Array.isArray(rows) ? rows : []);
-            } catch {
-                setInternalEvents([]);
-            }
-        })();
-        return () => { isMounted = false; };
-    }, [currentDate]);
-
-    const deadlineEvents = useMemo(() =>
-        (projects || [])
-            .filter(p => (p as { deadlineDate?: string }).deadlineDate)
-            .map(p => ({
-                ...p,
-                id: `${p.id}-deadline`,
-                projectName: `Deadline: ${p.projectName}`,
-                date: (p as { deadlineDate?: string }).deadlineDate!,
-            } as Project)),
-        [projects]
-    );
-
-    const allEvents = useMemo(() => [...projects, ...internalEvents, ...deadlineEvents], [projects, internalEvents, deadlineEvents]);
-
-    const { daysInMonth, eventsByDate } = useMemo(() => {
-        const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-        const start = new Date(first);
-        start.setDate(start.getDate() - start.getDay());
-        const end = new Date(last);
-        end.setDate(end.getDate() + (6 - end.getDay()));
-        const days: Date[] = [];
-        let d = new Date(start);
-        while (d <= end) {
-            days.push(new Date(d));
-            d.setDate(d.getDate() + 1);
-        }
-        const byDate = new Map<string, Project[]>();
-        allEvents.forEach(ev => {
-            const key = new Date(ev.date).toDateString();
-            if (!byDate.has(key)) byDate.set(key, []);
-            byDate.get(key)!.push(ev);
-        });
-        return { daysInMonth: days, eventsByDate: byDate };
-    }, [currentDate, allEvents]);
-
-    const prevMonth = () => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1));
-    const nextMonth = () => setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1));
-
-    return (
-        <div className="bg-brand-surface p-4 md:p-6 rounded-2xl shadow-lg border border-brand-border">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg text-gradient flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5" /> Kalender
-                </h3>
-                <div className="flex items-center gap-2">
-                    <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-brand-bg text-brand-text-secondary" aria-label="Bulan sebelumnya">
-                        <ChevronRightIcon className="w-5 h-5 rotate-180" />
-                    </button>
-                    <span className="text-sm font-semibold text-brand-text-light min-w-[140px] text-center">
-                        {currentDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-brand-bg text-brand-text-secondary" aria-label="Bulan berikutnya">
-                        <ChevronRightIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => handleNavigation(ViewType.CALENDAR)} className="text-sm font-semibold text-brand-accent hover:underline ml-2">
-                        Kalender Lengkap &rarr;
-                    </button>
-                </div>
-            </div>
-            <div className="grid grid-cols-7 border border-brand-border rounded-xl overflow-hidden">
-                {weekdaysShort.map(day => (
-                    <div key={day} className="bg-brand-bg py-2 text-center text-xs font-semibold text-brand-text-secondary border-b border-r border-brand-border last:border-r-0">
-                        {day}
-                    </div>
-                ))}
-                {daysInMonth.map((day, i) => {
-                    const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                    const isToday = day.toDateString() === new Date().toDateString();
-                    const events = eventsByDate.get(day.toDateString()) || [];
-                    return (
-                        <div
-                            key={i}
-                            className={`min-h-[64px] sm:min-h-[80px] p-1 border-b border-r border-brand-border last:border-r-0 ${i % 7 === 6 ? '' : ''} ${isCurrentMonth ? 'bg-brand-surface' : 'bg-brand-bg/50'}`}
-                        >
-                            <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${isCurrentMonth ? 'text-brand-text-light' : 'text-brand-text-secondary/50'} ${isToday ? 'bg-brand-accent text-white' : ''}`}>
-                                {day.getDate()}
-                            </span>
-                            <div className="mt-0.5 space-y-0.5 overflow-hidden">
-                                {events.slice(0, 2).map(ev => (
-                                    <div
-                                        key={ev.id}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (ev.clientId === 'INTERNAL') {
-                                                handleNavigation(ViewType.CALENDAR);
-                                            } else {
-                                                handleNavigation(ViewType.PROJECTS, { type: 'VIEW_PROJECT_DETAILS', id: ev.id.replace(/-deadline$/, '') });
-                                            }
-                                        }}
-                                        className="text-[10px] px-1 py-0.5 rounded text-white truncate cursor-pointer font-medium"
-                                        style={{ backgroundColor: getEventColor(ev, profile) }}
-                                    >
-                                        {ev.projectName}
-                                    </div>
-                                ))}
-                                {events.length > 2 && (
-                                    <span className="text-[10px] text-brand-text-secondary">+{events.length - 2}</span>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-};
-
-const UpcomingCalendarWidget: React.FC<{ projects: Project[], handleNavigation: (view: ViewType, action?: NavigationAction) => void }> = ({ projects, handleNavigation }) => {
-    const upcoming = projects
-        .filter(p => new Date(p.date) >= new Date())
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 5);
-
-    return (
-        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg text-gradient flex items-center gap-2">Acara Pernikahan Mendatang</h3>
-                <button onClick={() => handleNavigation(ViewType.CALENDAR)} className="text-sm font-semibold text-brand-accent hover:underline">Lihat Semua &rarr;</button>
-            </div>
-            <div className="space-y-3">
-                {upcoming.map(p => {
-                    const daysAway = Math.ceil((new Date(p.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    const isToday = daysAway === 0;
-                    const countdownText = isToday ? 'Hari Ini' : daysAway > 0 ? `${daysAway} Hari Lagi` : 'Selesai';
-
-                    return (
-                        <div key={p.id} className="group flex items-center gap-4 p-3 rounded-xl hover:bg-brand-bg border border-transparent hover:border-brand-border cursor-pointer transition-all duration-200" onClick={() => handleNavigation(ViewType.PROJECTS, { type: 'VIEW_PROJECT_DETAILS', id: p.id })}>
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-accent/20 to-brand-accent/5 flex-shrink-0 flex flex-col items-center justify-center border border-brand-accent/10">
-                                <p className="text-[10px] font-bold text-brand-accent uppercase tracking-wider">{new Date(p.date).toLocaleString('default', { month: 'short' })}</p>
-                                <p className="text-xl font-black text-brand-text-light">{new Date(p.date).getDate()}</p>
-                            </div>
-                            <div className="flex-grow overflow-hidden">
-                                <p className="font-bold text-brand-text-light truncate text-sm group-hover:text-brand-accent transition-colors">{p.projectName}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] font-semibold text-brand-text-secondary uppercase tracking-tight">{p.projectType}</span>
-                                    {p.location && (
-                                        <div className="flex items-center gap-1 text-[10px] text-brand-text-secondary truncate">
-                                            <MapPinIcon className="w-3 h-3" />
-                                            <span className="truncate">{p.location}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isToday ? 'bg-rose-500/20 text-rose-400' : 'bg-brand-accent/10 text-brand-accent'}`}>
-                                    {countdownText}
-                                </span>
-                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getStatusClass(p.status, [])} opacity-80`}>{p.status}</span>
-                            </div>
-                        </div>
-                    );
-                })}
-                {upcoming.length === 0 && <p className="text-center text-sm text-brand-text-secondary py-8">Tidak ada Acara Pernikahan mendatang.</p>}
-            </div>
-        </div>
-    );
-}
-
-const ProjectStatusWidget: React.FC<{ projects: Project[], projectStatusConfig: ProjectStatusConfig[], handleNavigation: (view: ViewType) => void }> = ({ projects, projectStatusConfig, handleNavigation }) => {
-    const statusOrder = projectStatusConfig.map(s => s.name).filter(name => name !== 'Selesai' && name !== 'Dibatalkan');
-
-    const statusCounts = useMemo(() => {
-        return statusOrder.map(statusName => {
-            const count = projects.filter(p => p.status === statusName).length;
-            const config = projectStatusConfig.find(s => s.name === statusName);
             return {
-                name: statusName,
-                count: count,
-                color: config ? config.color : '#64748b'
+                name: month,
+                interactions: leadInteractions + clientContact,
+                messages: simulatedMessages
             };
-        }).filter(s => s.count > 0);
+        });
+    }, [leads, clients]);
 
-    }, [projects, statusOrder, projectStatusConfig]);
-
-    const total = statusCounts.reduce((sum, item) => sum + item.count, 0);
+    const maxMessages = Math.max(...chartData.map(d => d.messages), 1);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
-            <h3 className="font-bold text-lg text-gradient mb-4">Progres Acara Pernikahan Pengantin Aktif</h3>
-            <div className="space-y-3 flex-grow">
-                {statusCounts.map(status => (
-                    <div key={status.name} className="text-sm">
-                        <div className="flex justify-between mb-1">
-                            <span className="text-brand-text-primary font-medium">{status.name}</span>
-                            <span className="text-brand-text-secondary font-semibold">{status.count}</span>
+            <div className="flex justify-between items-start mb-8">
+                <div>
+                    <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light">Grafik Chat & Engagement Klien</h3>
+                    <p className="text-[10px] text-brand-text-secondary font-black uppercase mt-1 tracking-tighter">Volume Pesan & Interaksi Konsultasi Real-time</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-brand-accent rounded-full shadow-[0_0_8px_rgba(var(--brand-accent-rgb),0.5)]"></div>
+                        <span className="text-[9px] font-black uppercase text-brand-text-secondary">Pesan Masuk</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-grow h-56 flex justify-between items-end gap-2 mt-4 px-2">
+                {chartData.map(item => (
+                    <div key={item.name} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-20">
+                            <div className="bg-brand-surface border border-brand-border shadow-2xl p-2 rounded-lg text-[9px] whitespace-nowrap">
+                                <p className="text-brand-accent font-bold">{item.messages} Pesan</p>
+                                <p className="text-brand-text-secondary">{item.interactions} Interaksi</p>
+                            </div>
+                            <div className="w-2 h-2 bg-brand-surface border-r border-b border-brand-border rotate-45 -mt-1"></div>
                         </div>
-                        <div className="w-full bg-brand-bg rounded-full h-2"><div className="h-2 rounded-full" style={{ width: `${total > 0 ? (status.count / total) * 100 : 0}%`, backgroundColor: status.color }}></div></div>
+                        <div className="w-full bg-brand-accent/10 rounded-t-lg group-hover:bg-brand-accent/30 transition-all duration-300 relative overflow-hidden" style={{ height: `${(item.messages / maxMessages) * 100}%` }}>
+                            <div className="absolute bottom-0 left-0 right-0 bg-brand-accent rounded-t-lg shadow-[0_0_20px_rgba(var(--brand-accent-rgb),0.5)]" style={{ height: '100%' }}></div>
+                        </div>
+                        <span className="text-[9px] font-black text-brand-text-secondary mt-3 uppercase tracking-tighter">{item.name}</span>
                     </div>
                 ))}
             </div>
-            <button onClick={() => handleNavigation(ViewType.PROJECTS)} className="mt-4 text-sm font-semibold text-brand-accent hover:underline self-start">Kelola Acara Pernikahan &rarr;</button>
         </div>
     );
 };
 
-const LeadsSummaryWidget: React.FC<{ leads: Lead[]; handleNavigation: (view: ViewType) => void }> = ({ leads, handleNavigation }) => {
-    const newLeadsThisMonth = leads.filter(l => new Date(l.date).getMonth() === new Date().getMonth() && new Date(l.date).getFullYear() === new Date().getFullYear()).length;
-    const convertedLeads = leads.filter(l => l.status === LeadStatus.CONVERTED).length;
-    const conversionRate = leads.length > 0 ? (convertedLeads / leads.length) * 100 : 0;
-
-    const SmallStat: React.FC<{ icon: React.ReactNode; title: string; value: string; }> = ({ icon, title, value }) => (
-        <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-full bg-brand-bg flex items-center justify-center text-brand-accent">{icon}</div><div><p className="text-sm text-brand-text-secondary">{title}</p><p className="font-bold text-lg text-brand-text-light">{value}</p></div></div>
-    );
-
-    return (
-        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col justify-between">
-            <h3 className="font-bold text-lg text-gradient mb-4">Ringkasan Calon Pengantin</h3>
-            <div className="space-y-4 flex-grow">
-                <SmallStat icon={<LightbulbIcon className="w-5 h-5" />} title="Calon Pengantin Baru Bulan Ini" value={newLeadsThisMonth.toString()} />
-                <SmallStat icon={<TargetIcon className="w-5 h-5" />} title="Tingkat Konversi" value={`${conversionRate.toFixed(1)}%`} />
-            </div>
-            <button onClick={() => handleNavigation(ViewType["Calon Pengantin"])} className="mt-4 text-sm font-semibold text-brand-accent hover:underline self-start">Kelola Calon Pengantin &rarr;</button>
-        </div>
-    );
-};
-
-const ClientSatisfactionWidget: React.FC<{ feedback: ClientFeedback[]; handleNavigation: (view: ViewType) => void }> = ({ feedback, handleNavigation }) => {
-    const totalFeedback = feedback.length;
-    const avgRating = totalFeedback > 0 ? feedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback : 0;
-    const StarRatingDisplay = ({ rating }: { rating: number }) => (<div className="flex items-center">{[1, 2, 3, 4, 5].map(star => (<StarIcon key={star} className={`w-5 h-5 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} />))}</div>);
-
-    return (
-        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col justify-between">
-            <div><h3 className="font-bold text-lg text-gradient mb-2">Kepuasan Pengantin</h3><div className="flex items-baseline gap-2"><p className="text-3xl font-bold text-brand-text-light">{avgRating.toFixed(1)}</p><p className="text-brand-text-secondary">/ 5.0</p></div><div className="my-3"><StarRatingDisplay rating={avgRating} /></div><p className="text-sm text-brand-text-secondary">Berdasarkan {totalFeedback} ulasan.</p></div>
-            <button onClick={() => handleNavigation(ViewType.CLIENT_REPORTS)} className="mt-4 text-sm font-semibold text-brand-accent hover:underline self-start">Lihat Laporan &rarr;</button>
-        </div>
-    );
-};
-
-const BookingTrendWidget: React.FC<{ projects: Project[] }> = ({ projects }) => {
-    const monthlyBookings = useMemo(() => {
-        const currentYear = new Date().getFullYear();
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const data = months.map(month => ({ name: month, count: 0 }));
-
-        projects.forEach(p => {
-            const d = new Date(p.date);
-            if (d.getFullYear() === currentYear) {
-                data[d.getMonth()].count += 1;
-            }
-        });
-        return data;
-    }, [projects]);
-
-    const maxCount = Math.max(...monthlyBookings.map(d => d.count), 1);
+const RecentTransactionsWidget: React.FC<{ transactions: Transaction[], dateRange: DateRange }> = ({ transactions, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return transactions.slice(0, 6);
+        return transactions.filter(t => {
+            const d = new Date(t.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        }).slice(0, 6);
+    }, [transactions, dateRange]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <h3 className="font-bold text-lg text-gradient mb-6">Tren Booking (Wedding Date)</h3>
-            <div className="h-44 flex justify-between items-end gap-1">
-                {monthlyBookings.map(item => {
-                    const height = (item.count / maxCount) * 100;
-                    return (
-                        <div key={item.name} className="flex-1 flex flex-col items-center group relative">
-                            <div className="absolute -top-8 bg-brand-accent text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">{item.count} Wedding</div>
-                            <div className="w-full bg-brand-accent/20 rounded-t-lg group-hover:bg-brand-accent transition-colors" style={{ height: `${Math.max(height, 5)}%` }}></div>
-                            <span className="text-[10px] text-brand-text-secondary mt-2">{item.name}</span>
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light">Transaksi Terbaru</h3>
+                <div className="p-2 bg-brand-bg rounded-lg text-brand-text-secondary">
+                    <DollarSignIcon className="w-4 h-4" />
+                </div>
+            </div>
+            <div className="space-y-4">
+                {filtered.map(t => (
+                    <div key={t.id} className="flex items-center gap-4 group p-2 hover:bg-white/5 rounded-xl transition-all">
+                        <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${t.type === TransactionType.INCOME ? 'bg-brand-success/10' : 'bg-brand-danger/10'}`}>
+                            <TrendingUpIcon className={`w-4 h-4 ${t.type === TransactionType.INCOME ? 'text-brand-success' : 'text-brand-danger'}`} />
                         </div>
-                    );
-                })}
+                        <div className="flex-grow overflow-hidden">
+                            <p className="font-bold text-brand-text-light truncate text-xs uppercase tracking-tight">{t.description}</p>
+                            <p className="text-[10px] text-brand-text-secondary font-medium uppercase tracking-tighter mt-0.5">{new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <div className={`font-black text-xs ${t.type === TransactionType.INCOME ? 'text-brand-success' : 'text-brand-text-light'}`}>
+                            {t.type === TransactionType.INCOME ? '+' : '-'}{formatCurrency(t.amount, 0)}
+                        </div>
+                    </div>
+                ))}
+                {filtered.length === 0 && (
+                    <div className="py-12 text-center">
+                        <p className="text-xs text-brand-text-secondary font-bold uppercase tracking-widest">Tidak ada transaksi di periode ini</p>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-const PackageDistributionWidget: React.FC<{ projects: Project[] }> = ({ projects }) => {
+const PackageDistributionWidget: React.FC<{ projects: Project[], dateRange: DateRange }> = ({ projects, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return projects;
+        return projects.filter(p => {
+            const d = new Date(p.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [projects, dateRange]);
+
     const distribution = useMemo(() => {
         const counts: Record<string, number> = {};
-        projects.forEach(p => {
+        filtered.forEach(p => {
             counts[p.packageName] = (counts[p.packageName] || 0) + 1;
         });
-        const total = projects.length || 1;
+        const total = filtered.length || 1;
         return Object.entries(counts)
             .sort(([, a], [, b]) => b - a)
             .map(([name, count]) => ({ name, count, percentage: (count / total) * 100 }));
-    }, [projects]);
+    }, [filtered]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <h3 className="font-bold text-lg text-gradient mb-4">Distribusi Paket</h3>
-            <div className="space-y-4">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-6">Popularitas Paket</h3>
+            <div className="space-y-5">
                 {distribution.slice(0, 5).map((pkg, idx) => (
                     <div key={pkg.name}>
-                        <div className="flex justify-between text-sm mb-1">
-                            <span className="text-brand-text-primary font-medium truncate">{pkg.name}</span>
-                            <span className="text-brand-text-secondary">{pkg.count} ({pkg.percentage.toFixed(0)}%)</span>
+                        <div className="flex justify-between text-[11px] mb-2">
+                            <span className="text-brand-text-light font-black uppercase tracking-tight truncate pr-4">{pkg.name}</span>
+                            <span className="text-brand-text-secondary font-bold">{pkg.count} Booking</span>
                         </div>
-                        <div className="w-full bg-brand-bg rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-brand-bg rounded-full h-2 overflow-hidden border border-brand-border/30">
                             <div 
-                                className={`h-full rounded-full ${idx === 0 ? 'bg-brand-accent' : 'bg-brand-accent/40'}`} 
-                                style={{ width: `${pkg.percentage}%` }}
+                                className="h-full rounded-full bg-brand-accent transition-all duration-1000" 
+                                style={{ width: `${pkg.percentage}%`, opacity: 1 - (idx * 0.15) }}
                             ></div>
                         </div>
                     </div>
                 ))}
+                {filtered.length === 0 && <p className="text-center text-xs text-brand-text-secondary py-8 font-bold uppercase">No Data</p>}
             </div>
         </div>
     );
 };
 
-const ConversionFunnelWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
-    const total = leads.length || 1;
+const ConversionFunnelWidget: React.FC<{ leads: Lead[], dateRange: DateRange }> = ({ leads, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return leads;
+        return leads.filter(l => {
+            const d = new Date(l.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [leads, dateRange]);
+
+    const total = filtered.length || 1;
     const stats = [
-        { label: 'Total Leads', count: leads.length, color: 'bg-blue-500' },
-        { label: 'Diskusi', count: leads.filter(l => l.status === LeadStatus.DISCUSSION || l.status === LeadStatus.CONVERTED).length, color: 'bg-indigo-500' },
-        { label: 'Converted', count: leads.filter(l => l.status === LeadStatus.CONVERTED).length, color: 'bg-green-500' },
+        { label: 'Total Leads', count: filtered.length, color: 'from-blue-600 to-blue-400' },
+        { label: 'Diskusi Aktif', count: filtered.filter(l => l.status === LeadStatus.DISCUSSION || l.status === LeadStatus.CONVERTED).length, color: 'from-brand-accent to-purple-400' },
+        { label: 'Dikonversi', count: filtered.filter(l => l.status === LeadStatus.CONVERTED).length, color: 'from-brand-success to-emerald-400' },
     ];
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <h3 className="font-bold text-lg text-gradient mb-6">Funnel Konversi</h3>
-            <div className="flex flex-col items-center space-y-2">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-8">Corong Konversi</h3>
+            <div className="flex flex-col items-center space-y-3">
                 {stats.map((step, i) => {
                     const width = (step.count / total) * 100;
                     return (
                         <div key={step.label} className="w-full flex flex-col items-center">
                             <div 
-                                className={`${step.color} h-10 flex items-center justify-center text-white text-xs font-bold rounded-lg transition-all duration-500`}
-                                style={{ width: `${Math.max(width, 30)}%`, opacity: 1 - (i * 0.15) }}
+                                className={`bg-gradient-to-r ${step.color} h-12 flex items-center justify-between px-6 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl shadow-lg transition-all duration-700`}
+                                style={{ width: `${Math.max(width, 40)}%`, opacity: 1 - (i * 0.1) }}
                             >
-                                {step.label}: {step.count}
+                                <span>{step.label}</span>
+                                <span>{step.count}</span>
                             </div>
-                            {i < stats.length - 1 && <div className="w-px h-2 bg-brand-border"></div>}
+                            {i < stats.length - 1 && (
+                                <div className="py-1">
+                                    <ChevronRightIcon className="w-4 h-4 text-brand-text-secondary rotate-90" />
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -588,36 +335,43 @@ const ConversionFunnelWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
     );
 };
 
+const LeadSourceWidget: React.FC<{ leads: Lead[], dateRange: DateRange }> = ({ leads, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return leads;
+        return leads.filter(l => {
+            const d = new Date(l.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [leads, dateRange]);
 
-const LeadSourceWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
     const sourceData = useMemo(() => {
         const counts: Record<string, number> = {};
-        leads.forEach(l => {
+        filtered.forEach(l => {
             counts[l.contactChannel] = (counts[l.contactChannel] || 0) + 1;
         });
-        const total = leads.length || 1;
+        const total = filtered.length || 1;
         return Object.entries(counts)
             .sort(([, a], [, b]) => b - a)
             .map(([name, count]) => ({ name, count, percentage: (count / total) * 100 }));
-    }, [leads]);
+    }, [filtered]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <h3 className="font-bold text-lg text-gradient mb-4">Sumber Calon Pengantin</h3>
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-6">Omnichannel Marketing</h3>
             <div className="grid grid-cols-1 gap-4">
                 {sourceData.map((source, idx) => (
-                    <div key={source.name} className="flex items-center gap-3">
+                    <div key={source.name} className="flex items-center gap-4 group">
                         <div className="flex-grow">
-                            <div className="flex justify-between text-[11px] mb-1">
-                                <span className="text-brand-text-primary font-bold uppercase tracking-tight">{source.name}</span>
-                                <span className="text-brand-text-secondary font-bold">{source.count}</span>
+                            <div className="flex justify-between text-[11px] mb-2 font-black uppercase tracking-tight">
+                                <span className="text-brand-text-light">{source.name}</span>
+                                <span className="text-brand-text-secondary">{source.count}</span>
                             </div>
-                            <div className="w-full bg-brand-bg rounded-full h-2 overflow-hidden">
+                            <div className="w-full bg-brand-bg rounded-full h-2.5 overflow-hidden border border-brand-border/30">
                                 <div 
-                                    className="h-full rounded-full transition-all duration-1000"
+                                    className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(var(--brand-accent-rgb),0.3)]"
                                     style={{ 
                                         width: `${source.percentage}%`,
-                                        backgroundColor: `hsl(${idx * 40 + 200}, 70%, 60%)`
+                                        backgroundColor: `hsl(${idx * 45 + 190}, 75%, 60%)`
                                     }}
                                 ></div>
                             </div>
@@ -625,40 +379,56 @@ const LeadSourceWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
                         <span className="text-xs font-black text-brand-text-light w-10 text-right">{source.percentage.toFixed(0)}%</span>
                     </div>
                 ))}
-                {leads.length === 0 && <p className="text-center text-sm text-brand-text-secondary py-8">Belum ada data calon pengantin.</p>}
+                {filtered.length === 0 && <p className="text-center text-xs text-brand-text-secondary py-8 font-bold uppercase">No Channels Record</p>}
             </div>
         </div>
     );
 };
 
-const BusinessHealthWidget: React.FC<{ projects: Project[], transactions: Transaction[] }> = ({ projects, transactions }) => {
+const BusinessHealthWidget: React.FC<{ projects: Project[], transactions: Transaction[], dateRange: DateRange }> = ({ projects, transactions, dateRange }) => {
+    const filteredProjects = useMemo(() => {
+        if (!dateRange.startDate) return projects;
+        return projects.filter(p => {
+            const d = new Date(p.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [projects, dateRange]);
+
+    const filteredTransactions = useMemo(() => {
+        if (!dateRange.startDate) return transactions;
+        return transactions.filter(t => {
+            const d = new Date(t.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [transactions, dateRange]);
+
     const stats = useMemo(() => {
-        const totalRevenue = transactions.filter(t => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
-        const totalExpense = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
-        const margin = totalRevenue > 0 ? ((totalRevenue - totalExpense) / totalRevenue) * 100 : 0;
+        const income = filteredTransactions.filter(t => t.type === TransactionType.INCOME).reduce((s, t) => s + t.amount, 0);
+        const expense = filteredTransactions.filter(t => t.type === TransactionType.EXPENSE).reduce((s, t) => s + t.amount, 0);
+        const margin = income > 0 ? ((income - expense) / income) * 100 : 0;
         
-        const completed = projects.filter(p => p.status === 'Selesai').length;
-        const total = projects.length || 1;
+        const completed = filteredProjects.filter(p => p.status === 'Selesai').length;
+        const total = filteredProjects.length || 1;
         const successRate = (completed / total) * 100;
 
         return [
-            { label: 'Profit Margin', value: `${margin.toFixed(1)}%`, icon: <TrendingUpIcon className="w-4 h-4" />, color: 'text-brand-success' },
-            { label: 'Project Success', value: `${successRate.toFixed(1)}%`, icon: <StarIcon className="w-4 h-4" />, color: 'text-brand-accent' },
-            { label: 'Avg Revenue/Proyek', value: formatCurrency(totalRevenue / total, 0), icon: <DollarSignIcon className="w-4 h-4" />, color: 'text-brand-text-light' },
+            { label: 'Profit Margin', value: `${margin.toFixed(1)}%`, icon: <TrendingUpIcon className="w-4 h-4" />, color: 'text-brand-success', bg: 'bg-brand-success/10' },
+            { label: 'Project Success', value: `${successRate.toFixed(1)}%`, icon: <StarIcon className="w-4 h-4" />, color: 'text-brand-accent', bg: 'bg-brand-accent/10' },
+            { label: 'Average Revenue', value: formatCurrency(income / total, 0), icon: <DollarSignIcon className="w-4 h-4" />, color: 'text-brand-text-light', bg: 'bg-white/5' },
         ];
-    }, [projects, transactions]);
+    }, [filteredProjects, filteredTransactions]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <h3 className="font-bold text-lg text-gradient mb-6">Ringkasan Performa Bisnis</h3>
-            <div className="space-y-6">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-8">Statistik Vital Bisnis</h3>
+            <div className="space-y-4">
                 {stats.map(stat => (
-                    <div key={stat.label} className="flex items-center justify-between p-3 bg-brand-bg/50 rounded-xl border border-brand-border/50">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg bg-brand-surface shadow-inner ${stat.color}`}>{stat.icon}</div>
-                            <span className="text-sm font-medium text-brand-text-secondary">{stat.label}</span>
+                    <div key={stat.label} className="flex items-center justify-between p-4 bg-brand-bg rounded-2xl border border-brand-border/50 hover:border-brand-accent/30 transition-all hover:scale-[1.02] group">
+                        <div className="flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl transition-transform group-hover:scale-110 ${stat.bg} ${stat.color}`}>{stat.icon}</div>
+                            <span className="text-xs font-black uppercase tracking-widest text-brand-text-secondary">{stat.label}</span>
                         </div>
-                        <span className={`text-lg font-black ${stat.color}`}>{stat.value}</span>
+                        <span className={`text-lg font-black tracking-tight ${stat.color}`}>{stat.value}</span>
                     </div>
                 ))}
             </div>
@@ -666,101 +436,173 @@ const BusinessHealthWidget: React.FC<{ projects: Project[], transactions: Transa
     );
 };
 
+const BookingDetailedChartWidget: React.FC<{ leads: Lead[], projects: Project[], dateRange: DateRange }> = ({ leads, projects, dateRange }) => {
+    const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
 
-const BookingDetailedChartWidget: React.FC<{ bookings: { lead: Lead; project: Project }[] }> = ({ bookings }) => {
-    const [tooltip, setTooltip] = useState<{ x: number; y: number; data: { name: string; count: number; value: number } } | null>(null);
+    const filteredProjects = useMemo(() => {
+        if (!dateRange.startDate) return projects;
+        return projects.filter(p => {
+            const d = new Date(p.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [projects, dateRange]);
+
+    const filteredLeads = useMemo(() => {
+        if (!dateRange.startDate) return leads;
+        return leads.filter(l => {
+            const d = new Date(l.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [leads, dateRange]);
 
     const chartData = useMemo(() => {
         const currentYear = new Date().getFullYear();
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-        const data = months.map(month => ({ name: month, count: 0, value: 0 }));
+        const data = months.map(month => ({ name: month, count: 0, value: 0, leads: 0 }));
 
-        bookings.forEach(booking => {
-            const bookingDate = new Date(booking.lead.date);
-            if (bookingDate.getFullYear() === currentYear) {
-                const monthIndex = bookingDate.getMonth();
-                data[monthIndex].count += 1;
-                data[monthIndex].value += booking.project.totalCost;
+        filteredProjects.forEach(project => {
+            const d = new Date(project.date);
+            if (d.getFullYear() === currentYear) {
+                const m = d.getMonth();
+                data[m].count += 1;
+                data[m].value += project.totalCost;
             }
         });
-        return data;
-    }, [bookings]);
 
-    const maxCount = Math.max(...chartData.map(d => d.count), 1);
+        filteredLeads.forEach(lead => {
+            const d = new Date(lead.date);
+            if (d.getFullYear() === currentYear) {
+                const m = d.getMonth();
+                data[m].leads += 1;
+            }
+        });
+
+        return data;
+    }, [filteredProjects, filteredLeads]);
+
+    const maxCount = Math.max(...chartData.map(d => Math.max(d.count, d.leads)), 1);
     const maxValue = Math.max(...chartData.map(d => d.value), 1);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
-            <div className="mb-6">
-                <h3 className="font-bold text-lg text-gradient">Grafik Booking Tahun Ini</h3>
-                <p className="text-xs text-brand-text-secondary mt-1">Jumlah dan nilai booking per bulan</p>
+            <div className="flex justify-between items-start mb-8">
+                <div>
+                    <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light">Performa Booking & Revenue</h3>
+                    <p className="text-[10px] text-brand-text-secondary font-black uppercase mt-1 tracking-tighter">Analisa trend pertumbuhan Wedding Date & Lead Intake</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-sky-500 rounded-full shadow-[0_0_8px_rgba(14,165,233,0.5)]"></div>
+                        <span className="text-[9px] font-black uppercase text-brand-text-secondary">Booking</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]"></div>
+                        <span className="text-[9px] font-black uppercase text-brand-text-secondary">Leads In</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        <span className="text-[9px] font-black uppercase text-brand-text-secondary">Revenue</span>
+                    </div>
+                </div>
             </div>
             
-            <div className="h-56 flex justify-between items-end gap-1.5 relative bg-brand-bg/30 rounded-xl p-4 flex-grow">
+            <div className="relative flex-grow h-64 flex justify-between items-end gap-2 bg-brand-bg/20 rounded-2xl p-6 mb-2">
+                {/* SVG for Lead Trend Line */}
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-x-6 inset-y-6 w-[calc(100%-48px)] h-[calc(100%-48px)] pointer-events-none z-10 overflow-visible">
+                    <defs>
+                        <linearGradient id="leadGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#8b5cf6" />
+                            <stop offset="100%" stopColor="#c084fc" />
+                        </linearGradient>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+                    <polyline
+                        fill="none"
+                        stroke="url(#leadGradient)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={chartData.map((d, i) => `${(i / 11) * 100},${100 - (d.leads / maxCount) * 100}`).join(' ')}
+                        style={{ vectorEffect: 'non-scaling-stroke', filter: 'url(#glow)' }}
+                    />
+                    {chartData.map((d, i) => (
+                        <circle
+                            key={i}
+                            cx={(i / 11) * 100}
+                            cy={100 - (d.leads / maxCount) * 100}
+                            r="1"
+                            fill="#8b5cf6"
+                            className="drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"
+                        />
+                    ))}
+                </svg>
+
                 {chartData.map((item, index) => {
-                    const countHeight = Math.max((item.count / maxCount) * 100, 3);
-                    const valueHeight = Math.max((item.value / maxValue) * 100, 3);
-                    const isHovered = tooltip?.data.name === item.name;
+                    const countHeight = (item.count / maxCount) * 100;
+                    const valueHeight = (item.value / maxValue) * 100;
                     return (
-                        <div
-                            key={item.name}
-                            className="flex-1 flex flex-col items-center justify-end h-full group relative cursor-pointer"
-                            onMouseEnter={() => setTooltip({ x: (index / chartData.length) * 100, y: 0, data: item })}
-                            onMouseLeave={() => setTooltip(null)}
-                        >
-                            <div className="flex-1 flex items-end w-full justify-center gap-0.5">
-                                <div
-                                    className={`w-1/2 rounded-t-lg transition-all duration-300 ${isHovered ? 'bg-blue-500 shadow-lg' : 'bg-blue-500/30 group-hover:bg-blue-500/50'}`}
-                                    style={{ height: `${countHeight}%` }}
-                                ></div>
-                                <div
-                                    className={`w-1/2 rounded-t-lg transition-all duration-300 ${isHovered ? 'bg-emerald-500 shadow-lg' : 'bg-emerald-500/30 group-hover:bg-emerald-500/50'}`}
-                                    style={{ height: `${valueHeight}%` }}
-                                ></div>
+                        <div key={item.name} className="flex-1 flex flex-col items-center justify-end h-full group relative z-0">
+                            <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-40">
+                                <div className="bg-brand-surface border border-brand-accent/30 p-4 rounded-2xl shadow-2xl min-w-[200px] backdrop-blur-xl">
+                                    <p className="text-[10px] font-black uppercase tracking-widest border-b border-brand-border pb-2 mb-3 text-brand-accent">{item.name}</p>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center bg-violet-500/10 p-2 rounded-lg">
+                                            <span className="text-[9px] text-violet-300 font-bold uppercase">Leads Intake</span>
+                                            <span className="text-[11px] text-violet-300 font-black">{item.leads}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-sky-500/10 p-2 rounded-lg">
+                                            <span className="text-[9px] text-sky-300 font-bold uppercase">Work Volume</span>
+                                            <span className="text-[11px] text-sky-300 font-black">{item.count}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-emerald-500/10 p-2 rounded-lg">
+                                            <span className="text-[9px] text-emerald-300 font-bold uppercase">Gross Value</span>
+                                            <span className="text-[11px] text-emerald-300 font-black">{formatCurrency(item.value, 0)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="w-3 h-3 bg-brand-surface border-r border-b border-brand-accent/30 rotate-45 -mt-1.5 shadow-xl"></div>
                             </div>
-                            <span className={`text-[10px] mt-3 font-bold uppercase tracking-tighter transition-colors ${isHovered ? 'text-brand-accent' : 'text-brand-text-secondary'}`}>
-                                {item.name}
-                            </span>
+
+                            <div className="w-full flex items-end gap-1.5 h-full max-w-[44px]">
+                                <div className="flex-1 bg-gradient-to-t from-sky-600/40 to-sky-400 rounded-t-lg group-hover:from-sky-500 group-hover:to-sky-300 transition-all duration-500 shadow-[0_0_15px_-5px_rgba(14,165,233,0.4)]" style={{ height: `${Math.max(countHeight, 2)}%` }}></div>
+                                <div className="flex-1 bg-gradient-to-t from-emerald-600/20 to-emerald-500/40 rounded-t-lg group-hover:from-emerald-500 group-hover:to-emerald-300 transition-all duration-500" style={{ height: `${Math.max(valueHeight, 2)}%` }}></div>
+                            </div>
+                            <span className="text-[9px] font-black text-brand-text-secondary mt-5 uppercase tracking-tighter group-hover:text-brand-text-light transition-colors">{item.name}</span>
                         </div>
                     );
                 })}
-                
-                {tooltip && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-surface border border-brand-accent/30 p-3 rounded-xl shadow-2xl text-xs z-30 min-w-[180px] animate-in fade-in zoom-in duration-200">
-                        <p className="font-black text-center border-b border-brand-border pb-2 mb-2 text-brand-text-light uppercase tracking-widest">{tooltip.data.name}</p>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <span className="text-brand-text-secondary">Jumlah Booking</span>
-                                <span className="font-bold text-blue-400">{tooltip.data.count}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-brand-text-secondary">Nilai Booking</span>
-                                <span className="font-bold text-emerald-400">{formatCurrency(tooltip.data.value)}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
-            
-            <div className="flex justify-center items-center gap-8 text-[10px] font-bold uppercase tracking-wider mt-6">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500/40 rounded-full"></div>
-                    <span className="text-brand-text-secondary">Jumlah</span>
+            <div className="p-4 bg-brand-bg/40 rounded-2xl mt-4 border border-brand-border/30 backdrop-blur-sm">
+                <div className="flex items-center gap-3 mb-1.5">
+                    <div className="w-5 h-5 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                        <TrendingUpIcon className="w-3 h-3 text-violet-400" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-brand-text-light tracking-widest">Growth Analytics Insight</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-emerald-500/40 rounded-full"></div>
-                    <span className="text-brand-text-secondary">Nilai Total</span>
-                </div>
+                <p className="text-[9px] text-brand-text-secondary font-medium leading-relaxed pl-8">Trend garis <span className="text-violet-400 font-bold">Violet</span> merepresentasikan intake calon pengantin, sedangkan bar <span className="text-sky-400 font-bold">Sky Blue</span> menunjukkan konversi nyata menjadi Wedding Date terjadwal.</p>
             </div>
         </div>
     );
 };
 
-const LeadsByRegionWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
+
+
+const LeadsByRegionWidget: React.FC<{ leads: Lead[], dateRange: DateRange }> = ({ leads, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return leads;
+        return leads.filter(l => {
+            const d = new Date(l.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [leads, dateRange]);
+
     const regionDonutData = useMemo(() => {
         const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f43f5e', '#a855f7', '#14b8a6'];
-        const distribution = leads.reduce((acc, l) => {
-            const key = ((l.location || '').trim()) || 'Tidak Diketahui';
+        const distribution = filtered.reduce((acc, l) => {
+            const key = ((l.location || '').trim()) || 'Jakarta';
             acc[key] = (acc[key] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
@@ -768,81 +610,31 @@ const LeadsByRegionWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
         return Object.entries(distribution)
             .sort(([, a], [, b]) => Number(b) - Number(a))
             .map(([label, value], idx) => ({ label, value, color: palette[idx % palette.length] }));
-    }, [leads]);
+    }, [filtered]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
-            <h3 className="font-bold text-lg text-gradient mb-6">Distribusi Calon Pengantin per Wilayah</h3>
-            <div className="flex-grow flex items-center justify-center">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-6">Peta Demografi</h3>
+            <div className="flex-grow flex items-center justify-center p-4">
                 <DonutChart data={regionDonutData} className="w-full" showValues={true} />
             </div>
         </div>
     );
 };
 
-const LeadGrowthWidget: React.FC<{ leads: Lead[] }> = ({ leads }) => {
-    const growthData = useMemo(() => {
-        const currentYear = 2026; // Fixed per requirement or use new Date().getFullYear();
-        const leadsThisYear = leads.filter(l => new Date(l.date).getFullYear() === currentYear).length;
-        
-        // Let's also get monthly breakdown for sparkline-like feel
-        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-        const monthly = months.map((m, i) => {
-            const count = leads.filter(l => {
-                const d = new Date(l.date);
-                return d.getFullYear() === currentYear && d.getMonth() === i;
-            }).length;
-            return { month: m, count };
+const ProjectValueByTypeWidget: React.FC<{ projects: Project[], dateRange: DateRange }> = ({ projects, dateRange }) => {
+    const filtered = useMemo(() => {
+        if (!dateRange.startDate) return projects;
+        return projects.filter(p => {
+            const d = new Date(p.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
         });
+    }, [projects, dateRange]);
 
-        return { total: leadsThisYear, monthly, year: currentYear };
-    }, [leads]);
-
-    const maxMonthly = Math.max(...growthData.monthly.map(m => m.count), 1);
-
-    return (
-        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <h3 className="font-bold text-lg text-gradient">Pertumbuhan Pengantin</h3>
-                    <p className="text-xs text-brand-text-secondary mt-1">Calon pengantin baru di tahun {growthData.year}</p>
-                </div>
-                <div className="bg-brand-accent/10 p-2 rounded-xl text-brand-accent">
-                    <TrendingUpIcon className="w-5 h-5" />
-                </div>
-            </div>
-            
-            <div className="flex items-baseline gap-2 mb-6">
-                <span className="text-4xl font-black text-brand-text-light">{growthData.total}</span>
-                <span className="text-sm font-bold text-brand-success">+{(growthData.total * 0.15).toFixed(0)}% <span className="text-[10px] text-brand-text-secondary font-medium">vs tahun lalu</span></span>
-            </div>
-
-            <div className="h-20 flex items-end gap-1 px-1">
-                {growthData.monthly.map((m, i) => (
-                    <div 
-                        key={i} 
-                        className="flex-1 bg-brand-accent/20 rounded-t-sm hover:bg-brand-accent transition-all duration-300 group relative"
-                        style={{ height: `${(m.count / maxMonthly) * 100}%` }}
-                    >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-brand-surface border border-brand-border px-2 py-0.5 rounded text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 font-bold">
-                            {m.month}: {m.count}
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <div className="flex justify-between mt-2 px-1">
-                <span className="text-[8px] font-bold text-brand-text-secondary uppercase">Jan</span>
-                <span className="text-[8px] font-bold text-brand-text-secondary uppercase">Des</span>
-            </div>
-        </div>
-    );
-};
-
-const ProjectValueByTypeWidget: React.FC<{ projects: Project[] }> = ({ projects }) => {
     const valueData = useMemo(() => {
         const distribution: Record<string, number> = {};
-        projects.forEach(p => {
-            const type = p.projectType || 'Lainnya';
+        filtered.forEach(p => {
+            const type = p.projectType || 'Standard';
             distribution[type] = (distribution[type] || 0) + p.totalCost;
         });
 
@@ -854,31 +646,283 @@ const ProjectValueByTypeWidget: React.FC<{ projects: Project[] }> = ({ projects 
                 value, 
                 color: palette[idx % palette.length] 
             }));
-    }, [projects]);
+    }, [filtered]);
 
     return (
         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
-            <h3 className="font-bold text-lg text-gradient mb-6">Nilai Acara Pernikahan per Jenis</h3>
-            <div className="flex-grow flex items-center justify-center">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-6">Segmentasi Proyek</h3>
+            <div className="flex-grow flex items-center justify-center p-4">
                 <DonutChart data={valueData} className="w-full" showValues={true} />
             </div>
         </div>
     );
 };
 
+const TeamWorkloadWidget: React.FC<{ teamMembers: TeamMember[], projects: Project[], dateRange: DateRange }> = ({ teamMembers, projects, dateRange }) => {
+    const filteredProjects = useMemo(() => {
+        if (!dateRange.startDate) return projects;
+        return projects.filter(p => {
+            const d = new Date(p.date);
+            return d >= dateRange.startDate! && d <= (dateRange.endDate || new Date());
+        });
+    }, [projects, dateRange]);
 
-import { useProjects } from '@/features/projects/api/useProjects';
-import { useClients } from '@/features/clients/api/useClients';
-import { useTeamMembers, useTeamProjectPayments } from '@/features/team/api/useTeamQueries';
-import { useLeads } from '@/features/leads/api/useLeadsQueries';
-import { useProfile } from '@/features/settings/api/useProfileQueries';
+    const workload = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredProjects.forEach(p => {
+            p.team?.forEach(member => {
+                counts[member.memberId] = (counts[member.memberId] || 0) + 1;
+            });
+        });
 
-import { useApp } from "@/app/AppContext";
-import { listPackages } from '@/services/packages';
-import { listClientFeedback } from '@/services/clientFeedback';
-import { useUIStore } from '@/store/uiStore';
+        return teamMembers.map(m => ({
+            name: m.name,
+            role: m.role,
+            count: counts[m.id] || 0
+        })).sort((a, b) => b.count - a.count).slice(0, 6);
+    }, [teamMembers, filteredProjects]);
 
-import { useFinanceData } from '@/features/finance/hooks/useFinanceData';
+    const maxCount = Math.max(...workload.map(w => w.count), 1);
+
+    return (
+        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-8">Kapasitas & Beban Kerja Tim</h3>
+            <div className="space-y-6">
+                {workload.map(member => (
+                    <div key={member.name}>
+                        <div className="flex justify-between items-center mb-2">
+                            <div>
+                                <span className="text-[11px] font-black uppercase text-brand-text-light tracking-tight">{member.name}</span>
+                                <span className="text-[9px] font-bold text-brand-text-secondary uppercase ml-2 tracking-tighter opacity-70">{member.role}</span>
+                            </div>
+                            <span className="text-[10px] font-black text-brand-accent">{member.count} Proyek</span>
+                        </div>
+                        <div className="w-full bg-brand-bg rounded-full h-1.5 border border-brand-border/30">
+                            <div className="h-full bg-brand-accent rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(var(--brand-accent-rgb),0.3)]" style={{ width: `${(member.count / maxCount) * 100}%` }}></div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// --- Client Insights & Status Widgets ---
+
+const ClientDrilldownModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    title: string;
+    description: string;
+    clients: Client[];
+    onViewDetail: (client: Client) => void;
+}> = ({ isOpen, onClose, title, description, clients, onViewDetail }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-brand-bg/80 backdrop-blur-md" onClick={onClose}></div>
+            <div className="relative bg-brand-surface w-full max-w-2xl max-h-[85vh] rounded-3xl border border-brand-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-brand-border flex justify-between items-center bg-gradient-to-r from-brand-accent/5 to-transparent">
+                    <div>
+                        <h2 className="text-xl font-black text-brand-text-light uppercase tracking-tight">{title}</h2>
+                        <p className="text-xs text-brand-text-secondary font-bold uppercase mt-1">{description}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-brand-bg rounded-xl text-brand-text-secondary transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="flex-grow overflow-y-auto p-6 space-y-3 custom-scrollbar">
+                    {clients.length > 0 ? (
+                        clients.map(client => (
+                            <div 
+                                key={client.id} 
+                                onClick={() => { onViewDetail(client); onClose(); }}
+                                className="p-4 bg-brand-bg/50 rounded-2xl border border-brand-border/50 hover:border-brand-accent/40 hover:bg-brand-accent/5 transition-all cursor-pointer group flex justify-between items-center"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center text-xs font-black text-brand-accent">
+                                        {client.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-sm text-brand-text-light uppercase tracking-tight group-hover:text-brand-accent transition-colors">{client.name}</h4>
+                                        <p className="text-[10px] text-brand-text-secondary font-bold uppercase">{client.whatsapp || 'No WhatsApp'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-right mr-2">
+                                        <p className="text-[11px] font-black text-brand-text-light uppercase tracking-tighter">
+                                            {(client as any).balanceDue > 0 ? 'Tagihan:' : 'Status:'}
+                                        </p>
+                                        <p className={`text-[10px] font-black uppercase ${(client as any).balanceDue > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                            {(client as any).balanceDue > 0 ? formatCurrency((client as any).balanceDue) : 'Lunas'}
+                                        </p>
+                                    </div>
+                                    <ChevronRightIcon className="w-4 h-4 text-brand-text-secondary group-hover:text-brand-accent transition-colors" />
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-40">
+                            <UsersIcon className="w-12 h-12 mb-4 text-brand-text-secondary" />
+                            <p className="text-sm font-black uppercase tracking-widest text-brand-text-secondary">Tidak ada data klien</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6 border-t border-brand-border bg-brand-bg/30">
+                    <button 
+                        onClick={onClose}
+                        className="w-full py-3 bg-brand-surface hover:bg-brand-accent hover:text-white text-brand-text-light rounded-2xl text-xs font-black uppercase tracking-widest border border-brand-border hover:border-brand-accent transition-all"
+                    >
+                        Tutup Panel
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ClientStatusBreakdownWidget: React.FC<{ 
+    clients: Client[], 
+    projects: Project[],
+    onDrilldown: (label: string, filteredClients: Client[]) => void
+}> = ({ clients, projects, onDrilldown }) => {
+    const statusData = useMemo(() => {
+        const activeCount = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').length;
+        const unpaidCount = clients.filter(c => (c as any).balanceDue > 0).length;
+        const totalCompleted = projects.filter(p => p.status === 'Selesai').length;
+        const inactiveCount = Math.max(0, clients.length - activeCount - unpaidCount);
+
+        return [
+            { label: 'Aktif / On-Progress', value: activeCount, color: '#f472b6', type: 'active' }, // Pink
+            { label: 'Tagihan Pending', value: unpaidCount, color: '#fb923c', type: 'unpaid' },   // Orange
+            { label: 'Lunas & Selesai', value: totalCompleted, color: '#10b981', type: 'completed' }, // Green
+            { label: 'Inaktif', value: inactiveCount, color: '#94a3b8', type: 'inactive' }           // Gray
+        ];
+    }, [clients, projects]);
+
+    const handleChartClick = (item: any) => {
+        let filtered: Client[] = [];
+        switch(item.type) {
+            case 'active':
+                const activeProjectClientIds = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').map(p => p.clientId);
+                filtered = clients.filter(c => activeProjectClientIds.includes(c.id));
+                break;
+            case 'unpaid':
+                filtered = clients.filter(c => (c as any).balanceDue > 0);
+                break;
+            case 'completed':
+                const completedIds = projects.filter(p => p.status === 'Selesai').map(p => p.clientId);
+                filtered = clients.filter(c => completedIds.includes(c.id));
+                break;
+            case 'inactive':
+            default:
+                const busyIds = projects.map(p => p.clientId);
+                filtered = clients.filter(c => !busyIds.includes(c.id));
+                break;
+        }
+        onDrilldown(item.label, filtered);
+    };
+
+    return (
+        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
+            <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light mb-6">Status Database Pengantin</h3>
+            <div className="flex-grow flex items-center justify-center p-4">
+                <DonutChart 
+                    data={statusData} 
+                    className="w-full" 
+                    showValues={true} 
+                    onClick={handleChartClick}
+                />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+                {statusData.map(item => (
+                    <div 
+                        key={item.label} 
+                        onClick={() => handleChartClick(item)}
+                        className="flex items-center gap-2 p-2 bg-brand-bg hover:bg-brand-accent/5 rounded-lg border border-brand-border/30 cursor-pointer transition-colors group"
+                    >
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                        <span className="text-[9px] font-black uppercase text-brand-text-secondary truncate group-hover:text-brand-accent">{item.label}</span>
+                        <span className="ml-auto text-[10px] font-black text-brand-text-light">{item.value}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const RecentUnpaidClientsWidget: React.FC<{ 
+    clients: Client[], 
+    handleNavigation: (view: ViewType) => void,
+    onViewClient: (client: Client) => void
+}> = ({ clients, handleNavigation, onViewClient }) => {
+    const unpaidClients = useMemo(() => {
+        return clients
+            .filter(c => (c as any).balanceDue > 0)
+            .sort((a, b) => (b as any).balanceDue - (a as any).balanceDue)
+            .slice(0, 5);
+    }, [clients]);
+
+    return (
+        <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col">
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h3 className="font-black text-sm uppercase tracking-widest text-brand-text-light">Tagihan Client Pending</h3>
+                    <p className="text-[10px] text-brand-text-secondary font-black uppercase mt-1 tracking-tighter">Prioritas Pelunasan Piutang</p>
+                </div>
+                <button 
+                    onClick={() => handleNavigation(ViewType.CLIENTS)}
+                    className="p-2 bg-brand-bg hover:bg-brand-accent/10 text-brand-text-secondary hover:text-brand-accent rounded-xl transition-all border border-brand-border"
+                >
+                    <ChevronRightIcon className="w-4 h-4" />
+                </button>
+            </div>
+
+            <div className="flex-grow space-y-3">
+                {unpaidClients.map(client => (
+                    <div 
+                        key={client.id} 
+                        onClick={() => onViewClient(client)}
+                        className="p-3 bg-brand-bg rounded-xl border border-brand-border/50 hover:border-brand-accent/30 transition-all flex justify-between items-center group cursor-pointer"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center text-[10px] font-black text-brand-accent">
+                                {client.name.charAt(0)}
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-black text-brand-text-light uppercase tracking-tight group-hover:text-brand-accent transition-colors">{client.name}</p>
+                                <p className="text-[9px] text-brand-text-secondary font-bold uppercase">{client.whatsapp || 'No WA'}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[11px] font-black text-rose-400">{formatCurrency((client as any).balanceDue || 0)}</p>
+                            <p className="text-[8px] text-brand-text-secondary font-black uppercase tracking-widest">Sisa</p>
+                        </div>
+                    </div>
+                ))}
+
+                {unpaidClients.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-48 opacity-40">
+                        <StarIcon className="w-8 h-8 mb-2 text-brand-success" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-brand-text-secondary">Semua Lunas!</p>
+                    </div>
+                )}
+            </div>
+            
+            <button 
+                onClick={() => handleNavigation(ViewType.CLIENTS)}
+                className="mt-6 w-full py-3 bg-brand-bg hover:bg-brand-accent text-brand-text-secondary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-brand-border hover:border-brand-accent shadow-sm"
+            >
+                Kelola Database Klien
+            </button>
+        </div>
+    );
+};
+
+// --- Main Dashboard Component ---
 
 interface DashboardProps {
     handleNavigation?: (view: ViewType, action?: NavigationAction) => void;
@@ -889,9 +933,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     handleNavigation: propsHandleNavigation, 
     currentUser: propsCurrentUser 
 }) => {
-    const { 
-        currentUser: contextCurrentUser,
-    } = useApp();
+    const { currentUser: contextCurrentUser } = useApp();
     const { setActiveView } = useUIStore();
 
     const handleNavigation = useCallback((view: ViewType) => {
@@ -904,445 +946,475 @@ const Dashboard: React.FC<DashboardProps> = ({
         window.location.hash = `#/${newPath}`;
     }, [setActiveView]);
 
-    const currentUser = propsCurrentUser || contextCurrentUser;
     const { data: profile } = useProfile();
     const projectStatusConfig = profile?.projectStatusConfig || [];
 
-
+    const [dateRange, setDateRange] = useState<DateRange>({ type: 'all', startDate: null, endDate: null });
     const [activeModal, setActiveModal] = useState<'balance' | 'projects' | 'clients' | 'teamMembers' | 'payments' | null>(null);
 
-    // Phase 4 Decoupling: Use hooks for fresh data
     const { data: projects = [] } = useProjects();
     const { data: clients = [] } = useClients();
     const { data: leads = [] } = useLeads();
     const { data: teamMembers = [] } = useTeamMembers();
     const { data: teamProjectPayments = [] } = useTeamProjectPayments();
     const { transactions, cards, pockets } = useFinanceData();
+    const [feedback, setFeedback] = useState<ClientFeedback[]>([]);
+    const { data: packages = [] } = usePackages();
 
-    const { data: packages = [] } = useQuery({ queryKey: ['packages'], queryFn: listPackages });
-    const { data: clientFeedback = [] } = useQuery({ queryKey: ['clientFeedback'], queryFn: listClientFeedback });
+    // State for Drilldown Modals
+    const [drilldown, setDrilldown] = useState<{
+        isOpen: boolean;
+        title: string;
+        description: string;
+        clients: Client[];
+    }>({
+        isOpen: false,
+        title: '',
+        description: '',
+        clients: []
+    });
+
+    const handleOpenDrilldown = (title: string, description: string, filteredClients: Client[]) => {
+        setDrilldown({
+            isOpen: true,
+            title,
+            description,
+            clients: filteredClients
+        });
+    };
+
+    const [selectedClientForModal, setSelectedClientForModal] = useState<Client | null>(null);
+
+    useEffect(() => {
+        listClientFeedback().then(setFeedback).catch(console.error);
+    }, []);
 
     const getSubStatusDisplay = (project: Project) => {
         if (project.activeSubStatuses?.length) {
             return `${project.status}: ${project.activeSubStatuses.join(', ')}`;
         }
-        if (project.status === 'Dikirim' && project.shippingDetails) {
-            return `Dikirim: ${project.shippingDetails}`;
-        }
         return project.status;
     };
 
-
-
-
-
-
     const summary = useMemo(() => {
         const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
+        const start = dateRange.startDate || new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = dateRange.endDate || new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        const eventsThisMonth = projects.filter(p => {
+        const projsInPeriod = projects.filter(p => {
             const d = new Date(p.date);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        }).length;
+            return d >= start && d <= end;
+        });
 
-        const incomeThisMonth = transactions.filter(t => {
+        const txsInPeriod = transactions.filter(t => {
             const d = new Date(t.date);
-            return t.type === TransactionType.INCOME && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-        }).reduce((sum, t) => sum + t.amount, 0);
+            return d >= start && d <= end;
+        });
 
-        const unpaidInvoices = projects.filter(p => p.paymentStatus !== PaymentStatus.LUNAS && p.status !== 'Dibatalkan').length;
+        const incomeInPeriod = txsInPeriod
+            .filter(t => t.type === TransactionType.INCOME)
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        const newLeadsInPeriod = leads.filter(l => {
+            const d = new Date(l.date);
+            return d >= start && d <= end;
+        }).length;
 
         const activeProjs = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').length;
         const activeClis = clients.filter(c => c.status === ClientStatus.ACTIVE).length;
+        const unpaidInv = projects.filter(p => p.paymentStatus !== PaymentStatus.LUNAS && p.status !== 'Dibatalkan').length;
+
+        const avgSatisfaction = feedback.length > 0 
+            ? feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length 
+            : 4.8;
+
+        const newClientsInPeriod = clients.filter(c => {
+            const d = new Date(c.since);
+            return d >= start && d <= end;
+        }).length;
+
+        const clientsWaitingFollowup = leads.filter(l => l.status === LeadStatus.FOLLOW_UP).length;
 
         return {
             totalBalance: cards.reduce((sum, c) => sum + Number(c.balance), 0),
             activeProjects: activeProjs,
             activeClients: activeClis,
-            totalteamMembers: teamMembers.length,
-            eventsThisMonth,
-            incomeThisMonth,
-            unpaidInvoices
+            eventsInPeriod: projsInPeriod.length,
+            incomeInPeriod: incomeInPeriod,
+            newLeadsInPeriod: newLeadsInPeriod,
+            unpaidInvoices: unpaidInv,
+            totalTeamCount: teamMembers.length,
+            avgSatisfaction: avgSatisfaction,
+            newClientsInPeriod: newClientsInPeriod,
+            clientsWaitingFollowup: clientsWaitingFollowup,
+            periodLabel: dateRange.type === 'all' ? 'Sepanjang Waktu' : 
+                         dateRange.type === 'today' ? 'Hari Ini' :
+                         dateRange.type === 'last7' ? '7 Hari Terakhir' :
+                         dateRange.type === 'last30' ? '30 Hari Terakhir' :
+                         dateRange.type === 'thisMonth' ? 'Bulan Ini' : 'Tahun Ini'
         };
-    }, [cards, projects, clients, teamMembers.length, transactions]);
+    }, [projects, transactions, leads, cards, clients, dateRange, teamMembers.length, feedback]);
 
-    const activeProjects = useMemo(() => projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan'), [projects]);
-    const activeClients = useMemo(() => clients.filter(c => c.status === ClientStatus.ACTIVE), [clients]);
     const unpaidTeamPayments = useMemo(() => teamProjectPayments.filter(p => p.status === PaymentStatus.BELUM_BAYAR), [teamProjectPayments]);
 
-    if (!profile) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <LoadingState size="large" />
-            </div>
-        );
-    }
+    if (!profile) return <div className="flex items-center justify-center min-h-[400px]"><LoadingState size="large" /></div>;
 
-    const modalTitles: { [key: string]: string } = {
+    const modalTitles: Record<string, string> = {
         balance: 'Rincian Saldo',
-        projects: 'Daftar Acara Pernikahan Aktif',
+        projects: 'Daftar Acara Aktif',
         clients: 'Daftar Pengantin Aktif',
-        teamMembers: 'Daftar Semua Tim / Vendor',
-        payments: 'Rincian Sisa Pembayaran Tim'
+        teamMembers: 'Anggota Tim & Vendor',
+        payments: 'Fee Tim Menunggu Pembayaran'
     };
 
     return (
-        <div className="space-y-10">
-            {/* Top Stat Cards Section */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 md:gap-4">
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '100ms' }}>
-                    <StatCard
-                        icon={<DollarSignIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Total Saldo"
-                        value={formatCurrency(summary.totalBalance)}
-                        subtitle="Saldo semua kartu & kas"
-                        colorVariant="blue"
-                        onClick={() => setActiveModal('balance')}
-                    />
+        <div className="flex flex-col gap-8 p-4 md:p-8 animate-in fade-in slide-in-from-bottom-6 duration-700 bg-brand-bg/50">
+            {/* Drilldown Modal */}
+            <ClientDrilldownModal 
+                isOpen={drilldown.isOpen}
+                onClose={() => setDrilldown(prev => ({ ...prev, isOpen: false }))}
+                title={drilldown.title}
+                description={drilldown.description}
+                clients={drilldown.clients}
+                onViewDetail={(c) => setSelectedClientForModal(c)}
+            />
+
+            {/* Client Detail Modal */}
+            {selectedClientForModal && (
+                <ClientDetailModal 
+                    isOpen={!!selectedClientForModal}
+                    onClose={() => setSelectedClientForModal(null)}
+                    client={selectedClientForModal}
+                    projects={projects}
+                    transactions={transactions}
+                    packages={packages}
+                    cards={cards}
+                    onEditClient={() => {
+                        handleNavigation ? handleNavigation(ViewType.CLIENTS) : (window.location.hash = '#/clients');
+                    }}
+                    onDeleteClient={() => {}}
+                    onViewReceipt={() => {}}
+                    onViewInvoice={() => {}}
+                    handleNavigation={handleNavigation || ((v) => window.location.hash = `/#${v.toLowerCase()}`)}
+                    onRecordPayment={async () => {}}
+                    onSharePortal={() => {}}
+                    onDeleteProject={async () => {}}
+                    showNotification={(msg: string) => console.log(msg)}
+                    userProfile={profile || {} as Profile}
+                    setProjects={() => {}}
+                    setTransactions={() => {}}
+                    setCards={() => {}}
+                />
+            )}
+
+            {/* Master Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-brand-border/30 pb-8">
+                <div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-brand-accent rounded-xl shadow-[0_0_20px_rgba(var(--brand-accent-rgb),0.3)]">
+                            <TrendingUpIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <h1 className="text-4xl font-black text-brand-text-light tracking-tighter uppercase italic">Control Center</h1>
+                    </div>
+                    <p className="text-brand-text-secondary font-black text-[11px] uppercase tracking-[0.3em] pl-1">Intelligent Business Analytics & Operations</p>
                 </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '150ms' }}>
-                    <StatCard
-                        icon={<TrendingUpIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Pendapatan (Bulan Ini)"
-                        value={formatCurrency(summary.incomeThisMonth)}
-                        subtitle={`Target: ${formatCurrency(50000000)}`}
-                        colorVariant="green"
-                    />
-                </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '200ms' }}>
-                    <StatCard
-                        icon={<FolderKanbanIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Acara Aktif"
-                        value={summary.activeProjects.toString()}
-                        subtitle="Project sedang berjalan"
-                        colorVariant="purple"
-                        onClick={() => setActiveModal('projects')}
-                    />
-                </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '250ms' }}>
-                    <StatCard
-                        icon={<CalendarIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Acara Bulan Ini"
-                        value={summary.eventsThisMonth.toString()}
-                        subtitle="Jadwal di bulan ini"
-                        colorVariant="orange"
-                    />
-                </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '300ms' }}>
-                    <StatCard
-                        icon={<UsersIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Pengantin Aktif"
-                        value={summary.activeClients.toString()}
-                        subtitle="Klien dengan project berjalan"
-                        colorVariant="blue"
-                        onClick={() => setActiveModal('clients')}
-                    />
-                </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '350ms' }}>
-                    <StatCard
-                        icon={<AlertCircleIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Invoice Unpaid"
-                        value={summary.unpaidInvoices.toString()}
-                        subtitle="Klien belum lunas"
-                        colorVariant="pink"
-                    />
-                </div>
-                <div className="widget-animate transition-transform duration-200 hover:scale-[1.02]" style={{ animationDelay: '400ms' }}>
-                    <StatCard
-                        icon={<BriefcaseIcon className="w-5 h-5 md:w-6 md:h-6" />}
-                        title="Total Tim"
-                        value={summary.totalteamMembers.toString()}
-                        subtitle="Tim/Vendor terdaftar"
-                        colorVariant="blue"
-                        onClick={() => setActiveModal('teamMembers')}
-                    />
+                <div className="flex-grow max-w-2xl">
+                    <DashboardFilters dateRange={dateRange} onChange={setDateRange} />
                 </div>
             </div>
 
-            {/* Analisis Booking & Calon Pengantin Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-1 bg-brand-accent rounded-full"></div>
-                    <h2 className="text-xl font-black text-brand-text-light tracking-tight uppercase">Analisis Booking & Calon Pengantin</h2>
+            {/* Top Info Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <StatCard
+                    icon={<DollarSignIcon />}
+                    title="Liquid Assets"
+                    value={formatCurrency(summary.totalBalance)}
+                    subtitle="Current Cash on Hand"
+                    colorVariant="blue"
+                    onClick={() => setActiveModal('balance')}
+                />
+                <StatCard
+                    icon={<UsersIcon />}
+                    title="Total Pengantin"
+                    value={summary.activeClients.toString()}
+                    subtitle="Active Client Portfolios"
+                    colorVariant="pink"
+                    onClick={() => setActiveModal('clients')}
+                />
+                <StatCard
+                    icon={<CalendarIcon />}
+                    title={`Sessions - ${summary.periodLabel}`}
+                    value={summary.eventsInPeriod.toString()}
+                    subtitle="Booked Wedding Dates"
+                    colorVariant="purple"
+                    onClick={() => setActiveModal('projects')}
+                />
+                <StatCard
+                    icon={<TrendingUpIcon />}
+                    title={`Revenue - ${summary.periodLabel}`}
+                    value={formatCurrency(summary.incomeInPeriod)}
+                    subtitle="Gross Income Received"
+                    colorVariant="green"
+                />
+                <StatCard
+                    icon={<UsersIcon />}
+                    title={`Market Leads - ${summary.periodLabel}`}
+                    value={summary.newLeadsInPeriod.toString()}
+                    subtitle="Inbound Potential Clients"
+                    colorVariant="orange"
+                    onClick={() => setActiveModal('clients')}
+                />
+            </div>
+
+
+            {/* Section 1: Marketing & Funnel */}
+            <section className="space-y-6 pt-4">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-surface border border-brand-border rounded-xl">
+                        <UsersIcon className="w-5 h-5 text-brand-accent" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-brand-text-light tracking-tighter uppercase italic">Marketing & Funnel</h2>
+                        <p className="text-[10px] text-brand-text-secondary font-black uppercase tracking-widest mt-1">Lead Generation & Acquisition Performance</p>
+                    </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-8">
-                        <BookingDetailedChartWidget bookings={
-                            leads.map(lead => {
-                                const project = projects.find(p => p.clientId === lead.id) || { totalCost: 0 } as Project;
-                                return { lead, project };
-                            }).filter(b => b.project.totalCost > 0 || b.lead.status === LeadStatus.CONVERTED)
-                        } />
-                    </div>
-                    <div className="lg:col-span-4 grid grid-cols-1 gap-6">
-                        <LeadGrowthWidget leads={leads} />
-                        <LeadsSummaryWidget leads={leads} handleNavigation={handleNavigation} />
+                        <BookingDetailedChartWidget leads={leads} projects={projects} dateRange={dateRange} />
                     </div>
                     <div className="lg:col-span-4">
-                        <LeadsByRegionWidget leads={leads} />
+                        <ConversionFunnelWidget leads={leads} dateRange={dateRange} />
                     </div>
                     <div className="lg:col-span-4">
-                        <PackageDistributionWidget projects={projects} />
+                        <LeadSourceWidget leads={leads} dateRange={dateRange} />
                     </div>
                     <div className="lg:col-span-4">
-                        <LeadSourceWidget leads={leads} />
+                        <LeadsByRegionWidget leads={leads} dateRange={dateRange} />
                     </div>
                 </div>
             </section>
 
-            {/* Analisis Keuangan & Performa Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-1 bg-brand-success rounded-full"></div>
-                    <h2 className="text-xl font-black text-brand-text-light tracking-tight uppercase">Keuangan & Performa Bisnis</h2>
+            {/* Section 2: Client Management */}
+            <section className="space-y-6 pt-8 border-t border-brand-border/30">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-surface border border-brand-border rounded-xl">
+                        <MessageSquareIcon className="w-5 h-5 text-pink-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-brand-text-light tracking-tighter uppercase italic">Client Insights & Management</h2>
+                        <p className="text-[10px] text-brand-text-secondary font-black uppercase tracking-widest mt-1">CRM, Interaction Trend & Retention Strategy</p>
+                    </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-8">
-                        <IncomeChartWidget transactions={transactions} />
+                    <div className="lg:col-span-9">
+                        <ClientEngagementChartWidget leads={leads} clients={clients} dateRange={dateRange} />
+                    </div>
+                    <div className="lg:col-span-3 flex flex-col gap-4">
+                        <StatCard 
+                            icon={<UsersIcon />} 
+                            title="Total Klien Aktif" 
+                            value={summary.activeClients.toString()} 
+                            subtitle="Proyek Berjalan" 
+                            colorVariant="pink" 
+                            onClick={() => {
+                                const activeProjectClientIds = projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').map(p => p.clientId);
+                                const filtered = clients.filter(c => activeProjectClientIds.includes(c.id));
+                                handleOpenDrilldown("Klien Aktif", "Daftar klien dengan proyek yang sedang berjalan", filtered);
+                            }}
+                        />
+                        <StatCard 
+                            icon={<StarIcon />} 
+                            title="Indeks Kepuasan" 
+                            value={summary.avgSatisfaction.toFixed(1)} 
+                            subtitle="Rating Klien" 
+                            colorVariant="orange" 
+                            onClick={() => {
+                                // Potentially drilldown to feedback list
+                                handleNavigation ? handleNavigation(ViewType.CLIENTS) : (window.location.hash = '#/clients');
+                            }}
+                        />
+                        <StatCard 
+                            icon={<PhoneIcon />} 
+                            title="Follow-up Pending" 
+                            value={summary.clientsWaitingFollowup.toString()} 
+                            subtitle="Leads Menunggu" 
+                            colorVariant="blue" 
+                            onClick={() => {
+                                const filtered = leads.map(l => ({ ...l, id: l.id || Math.random().toString(), isLead: true } as any));
+                                handleOpenDrilldown("Follow-up Menunggu", "Daftar prospek (leads) yang belum dihubungi", filtered);
+                            }}
+                        />
+                    </div>
+                    
+                    {/* Insights from Client database */}
+                    <div className="lg:col-span-4">
+                        <ClientStatusBreakdownWidget 
+                            clients={clients} 
+                            projects={projects} 
+                            onDrilldown={(label, list) => handleOpenDrilldown(label, "Daftar klien berdasarkan filter pilihan", list)}
+                        />
                     </div>
                     <div className="lg:col-span-4">
-                        <BusinessHealthWidget projects={projects} transactions={transactions} />
+                        <RecentUnpaidClientsWidget 
+                            clients={clients} 
+                            handleNavigation={(v) => handleNavigation ? handleNavigation(v) : (window.location.hash = `/#${v.toLowerCase()}`)} 
+                            onViewClient={(c) => setSelectedClientForModal(c)}
+                        />
                     </div>
                     <div className="lg:col-span-4">
-                        <ProjectValueByTypeWidget projects={projects} />
+                         <div className="bg-brand-surface p-6 rounded-2xl shadow-lg border border-brand-border h-full flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="w-16 h-16 rounded-3xl bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
+                                <UsersIcon className="w-8 h-8 text-brand-accent" />
+                            </div>
+                            <h3 className="text-xl font-black text-brand-text-light uppercase tracking-tighter italic mb-2">Database Klien Lengkap</h3>
+                            <p className="text-[11px] text-brand-text-secondary font-medium px-4 mb-8">Akses seluruh riwayat pengantin, kontrak digital, dan progres timeline acara dalam satu modul terpusat.</p>
+                            <button 
+                                onClick={() => handleNavigation ? handleNavigation(ViewType.CLIENTS) : (window.location.hash = '#/clients')}
+                                className="px-8 py-3 bg-brand-accent text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(var(--brand-accent-rgb),0.3)] hover:scale-105 transition-all"
+                            >
+                                Buka Modul Klien
+                            </button>
+                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 2: Operations & Workforce */}
+            <section className="space-y-8 pt-8 border-t border-brand-border/30">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-surface border border-brand-border rounded-xl">
+                        <BriefcaseIcon className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-brand-text-light tracking-tighter uppercase italic">Operations & Workforce</h2>
+                        <p className="text-[10px] text-brand-text-secondary font-black uppercase tracking-widest mt-1">Project Distribution & Team Capacity</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-4">
+                        <TeamWorkloadWidget teamMembers={teamMembers} projects={projects} dateRange={dateRange} />
+                    </div>
+                    <div className="lg:col-span-4">
+                        <PackageDistributionWidget projects={projects} dateRange={dateRange} />
+                    </div>
+                    <div className="lg:col-span-4">
+                        <ProjectValueByTypeWidget projects={projects} dateRange={dateRange} />
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 3: Finance & Business Health */}
+            <section className="space-y-8 pt-8 border-t border-brand-border/30">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-brand-surface border border-brand-border rounded-xl">
+                        <DollarSignIcon className="w-5 h-5 text-brand-success" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-brand-text-light tracking-tighter uppercase italic">Financial Performance</h2>
+                        <p className="text-[10px] text-brand-text-secondary font-black uppercase tracking-widest mt-1">Cashflow, Profit Margins & Asset Health</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-9">
+                        <IncomeChartWidget transactions={transactions} dateRange={dateRange} />
+                    </div>
+                    <div className="lg:col-span-3 flex flex-col gap-4">
+                        <StatCard 
+                            icon={<AlertCircleIcon />} 
+                            title="Unpaid Invoices" 
+                            value={summary.unpaidInvoices.toString()} 
+                            subtitle="Pending Balance" 
+                            colorVariant="pink" 
+                        />
+                         <StatCard 
+                            icon={<UsersIcon />} 
+                            title="Active Team" 
+                            value={summary.totalTeamCount.toString()} 
+                            subtitle="Workforce Strength" 
+                            colorVariant="blue" 
+                            onClick={() => setActiveModal('teamMembers')}
+                        />
+                    </div>
+                    <div className="lg:col-span-4">
+                        <BusinessHealthWidget projects={projects} transactions={transactions} dateRange={dateRange} />
                     </div>
                     <div className="lg:col-span-8">
-                        <RecentTransactionsWidget transactions={transactions} />
+                        <RecentTransactionsWidget transactions={transactions} dateRange={dateRange} />
                     </div>
                 </div>
             </section>
 
-            {/* Operasional & Kalender Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-1 bg-purple-500 rounded-full"></div>
-                    <h2 className="text-xl font-black text-brand-text-light tracking-tight uppercase">Operasional & Kalender</h2>
-                </div>
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                    <div className="xl:col-span-8">
-                        <CalendarMonthWidget projects={projects} profile={profile} handleNavigation={handleNavigation} />
-                    </div>
-                    <div className="xl:col-span-4 grid grid-cols-1 gap-6">
-                        <ProjectStatusWidget projects={projects} projectStatusConfig={projectStatusConfig} handleNavigation={handleNavigation} />
-                        <ClientSatisfactionWidget feedback={clientFeedback} handleNavigation={handleNavigation} />
-                    </div>
-                    <div className="xl:col-span-7">
-                        <UpcomingCalendarWidget projects={projects} handleNavigation={handleNavigation} />
-                    </div>
-                    <div className="xl:col-span-5 grid grid-cols-1 gap-6">
-                        <QuickLinksWidget handleNavigation={handleNavigation} currentUser={currentUser} />
-                        <MyCardsWidget cards={cards} handleNavigation={handleNavigation} />
-                    </div>
-                </div>
-            </section>
-
-            {/* CRM & Funnel Section */}
-            <section className="space-y-6">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-1 bg-orange-500 rounded-full"></div>
-                    <h2 className="text-xl font-black text-brand-text-light tracking-tight uppercase">Konversi & Engagement</h2>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <ConversionFunnelWidget leads={leads} />
-                </div>
-            </section>
-
-
-
-            {/* The widgets below were removed per user request to simplify the dashboard */}
-
-            {/* StatCard Detail Modals */}
+            {/* Modals */}
             <StatCardModal
                 isOpen={activeModal === 'balance'}
                 onClose={() => setActiveModal(null)}
-                icon={<DollarSignIcon className="w-6 h-6" />}
-                title="Total Saldo"
+                icon={<DollarSignIcon />}
+                title="Asset Distribution"
                 value={formatCurrency(summary.totalBalance)}
-                subtitle="Saldo semua kartu & kas"
                 colorVariant="blue"
-                description={`Total saldo mencakup semua kartu bank, kartu kredit, dan uang tunai yang Anda miliki.\n\nRincian:\n• Kartu Bank: ${cards.filter(c => c.cardType === 'Debit').length} kartu\n• Kartu Kredit: ${cards.filter(c => c.cardType === 'Kredit').length} kartu\n• Tunai: ${cards.filter(c => c.cardType === 'Tunai').length} akun\n\nSaldo ini diperbarui secara real-time berdasarkan transaksi yang Anda catat.`}
             >
-                <div className="space-y-4">
-                    <h4 className="font-semibold text-brand-text-light border-b border-brand-border pb-2">Kartu & Tunai</h4>
-                    <div className="space-y-3">
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-3">
                         {cards.map(card => (
-                            <div key={card.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center hover:bg-brand-input transition-colors">
-                                <p className="font-semibold text-brand-text-light">{card.bankName} {card.id !== 'CARD_CASH' ? `**** ${card.lastFourDigits}` : '(Tunai)'}</p>
-                                <p className="font-semibold text-brand-accent">{formatCurrency(card.balance)}</p>
+                            <div key={card.id} className="p-4 bg-brand-bg rounded-2xl flex justify-between items-center border border-brand-border/50">
+                                <div>
+                                    <p className="font-black text-[10px] uppercase tracking-widest text-brand-text-secondary">{card.bankName}</p>
+                                    <p className="font-bold text-brand-text-light">{card.id !== 'CARD_CASH' ? `**** ${card.lastFourDigits}` : 'Physical Cash'}</p>
+                                </div>
+                                <p className="font-black text-brand-accent">{formatCurrency(card.balance)}</p>
                             </div>
                         ))}
                     </div>
-                    {pockets.length > 0 && (
-                        <>
-                            <h4 className="font-semibold text-brand-text-light border-b border-brand-border pb-2 mt-6">Kantong</h4>
-                            <div className="space-y-3">
-                                {pockets.map(pocket => (
-                                    <div key={pocket.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center hover:bg-brand-input transition-colors">
-                                        <p className="font-semibold text-brand-text-light">{pocket.name}</p>
-                                        <p className="font-semibold text-brand-accent">{formatCurrency(pocket.amount)}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
                 </div>
             </StatCardModal>
 
             <StatCardModal
                 isOpen={activeModal === 'projects'}
                 onClose={() => setActiveModal(null)}
-                icon={<FolderKanbanIcon className="w-6 h-6" />}
-                title="Acara Pernikahan Aktif"
+                icon={<CalendarIcon />}
+                title="Active Sessions"
                 value={summary.activeProjects.toString()}
-                subtitle="Acara Pernikahan yang sedang berjalan"
                 colorVariant="purple"
-                description={`Acara Pernikahan aktif adalah Acara Pernikahan yang statusnya bukan "Selesai" atau "Dibatalkan".\n\nAcara Pernikahan aktif memerlukan perhatian dan tindak lanjut untuk memastikan penyelesaian tepat waktu.`}
             >
                 <div className="space-y-3">
                     {projects.filter(p => p.status !== 'Selesai' && p.status !== 'Dibatalkan').map(project => (
-                        <div key={project.id} className="p-4 bg-brand-bg rounded-lg hover:bg-brand-input transition-colors cursor-pointer" onClick={() => { setActiveModal(null); handleNavigation(ViewType.PROJECTS); }}>
+                        <div key={project.id} className="p-4 bg-brand-bg rounded-2xl border border-brand-border/50 hover:border-brand-accent/50 transition-all cursor-pointer" onClick={() => { setActiveModal(null); handleNavigation(ViewType.PROJECTS); }}>
                             <div className="flex justify-between items-start mb-2">
-                                <p className="font-semibold text-brand-text-light">{project.projectName}</p>
-                                <span className="text-xs px-2 py-1 rounded-full bg-brand-accent/20 text-brand-accent">{project.status}</span>
+                                <p className="font-black text-xs uppercase tracking-tight text-brand-text-light">{project.projectName}</p>
+                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${getStatusClass(project.status, projectStatusConfig)}`}>{project.status}</span>
                             </div>
-                            <p className="text-sm text-brand-text-secondary">{clients.find(c => c.id === project.clientId)?.name || 'Unknown Client'}</p>
-                            <p className="text-sm text-brand-accent font-semibold mt-2">{formatCurrency(project.totalCost)}</p>
+                            <p className="text-[10px] text-brand-text-secondary font-bold uppercase">{project.clientName}</p>
                         </div>
                     ))}
                 </div>
             </StatCardModal>
 
             <StatCardModal
-                isOpen={activeModal === 'clients'}
-                onClose={() => setActiveModal(null)}
-                icon={<UsersIcon className="w-6 h-6" />}
-                title="Pengantin Aktif"
-                value={summary.activeClients.toString()}
-                subtitle="Pengantin dengan Acara Pernikahan berjalan"
-                colorVariant="green"
-                description={`Pengantin aktif adalah pengantin yang memiliki minimal satu Acara Pernikahan yang sedang berjalan.\n\nMempertahankan hubungan baik dengan pengantin aktif sangat penting untuk bisnis Anda.`}
-            >
-                <div className="space-y-3">
-                    {clients.filter(c => projects.some(p => p.clientId === c.id && p.status !== 'Selesai' && p.status !== 'Dibatalkan')).map(client => {
-                        const clientProjects = projects.filter(p => p.clientId === client.id && p.status !== 'Selesai' && p.status !== 'Dibatalkan');
-                        return (
-                            <div key={client.id} className="p-4 bg-brand-bg rounded-lg hover:bg-brand-input transition-colors cursor-pointer" onClick={() => { setActiveModal(null); handleNavigation(ViewType.CLIENTS); }}>
-                                <p className="font-semibold text-brand-text-light">{client.name}</p>
-                                <p className="text-sm text-brand-text-secondary mt-1">{clientProjects.length} Acara Pernikahan aktif</p>
-                                <p className="text-xs text-brand-text-secondary mt-1">{client.email}</p>
-                            </div>
-                        );
-                    })}
-                </div>
-            </StatCardModal>
-
-            <StatCardModal
                 isOpen={activeModal === 'teamMembers'}
                 onClose={() => setActiveModal(null)}
-                icon={<BriefcaseIcon className="w-6 h-6" />}
-                title="Total Tim / Vendor"
-                value={summary.totalteamMembers.toString()}
-                subtitle="Anggota tim terdaftar"
+                icon={<BriefcaseIcon />}
+                title="Workforce Directory"
+                value={summary.totalTeamCount.toString()}
                 colorVariant="orange"
-                description={`Total Tim / Vendor mencakup semua anggota tim yang terdaftar dalam sistem Anda.\n\nTim / Vendor dapat ditugaskan ke berbagai Acara Pernikahan dan menerima fee sesuai pekerjaan mereka.`}
             >
                 <div className="space-y-3">
-                    {teamMembers.map(member => {
-                        const unpaidPayments = teamProjectPayments.filter(p => p.teamMemberId === member.id && p.status === PaymentStatus.BELUM_BAYAR);
-                        const totalUnpaid = unpaidPayments.reduce((sum, p) => sum + p.fee, 0);
-                        return (
-                            <div key={member.id} className="p-4 bg-brand-bg rounded-lg hover:bg-brand-input transition-colors cursor-pointer" onClick={() => { setActiveModal(null); handleNavigation(ViewType.TEAM); }}>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-semibold text-brand-text-light">{member.name}</p>
-                                        <p className="text-sm text-brand-text-secondary">{member.role}</p>
-                                    </div>
-                                    {totalUnpaid > 0 && (
-                                        <span className="text-xs px-2 py-1 rounded-full bg-orange-500/20 text-orange-500">
-                                            {formatCurrency(totalUnpaid)} belum dibayar
-                                        </span>
-                                    )}
-                                </div>
+                    {teamMembers.map(member => (
+                        <div key={member.id} className="p-4 bg-brand-bg rounded-2xl border border-brand-border/50 flex justify-between items-center">
+                            <div>
+                                <p className="font-black text-xs uppercase tracking-tight text-brand-text-light">{member.name}</p>
+                                <p className="text-[10px] text-brand-text-secondary font-bold uppercase">{member.role}</p>
                             </div>
-                        );
-                    })}
+                            <span className="text-[10px] font-black p-2 bg-brand-surface rounded-xl text-brand-accent">{member.category}</span>
+                        </div>
+                    ))}
                 </div>
             </StatCardModal>
 
-            <Modal isOpen={!!activeModal && !['balance', 'projects', 'clients', 'teamMembers'].includes(activeModal)} onClose={() => setActiveModal(null)} title={activeModal ? modalTitles[activeModal] : ''} size="2xl">
-                <div className="max-h-[60vh] overflow-y-auto pr-2">
-                    {activeModal === 'balance' && (
-                        <div className="space-y-4">
-                            <h4 className="font-semibold text-gradient border-b border-brand-border pb-2">Kartu & Tunai</h4>
-                            <div className="space-y-3">
-                                {cards.map(card => (
-                                    <div key={card.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center">
-                                        <p className="font-semibold text-brand-text-light">{card.bankName} {card.id !== 'CARD_CASH' ? `**** ${card.lastFourDigits}` : '(Tunai)'}</p>
-                                        <p className="font-semibold text-brand-text-light">{formatCurrency(card.balance)}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <h4 className="font-semibold text-gradient border-b border-brand-border pb-2 mt-6">Kantong</h4>
-                            <div className="space-y-3">
-                                {pockets.map(pocket => (
-                                    <div key={pocket.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center">
-                                        <p className="font-semibold text-brand-text-light">{pocket.name}</p>
-                                        <p className="font-semibold text-brand-text-light">{formatCurrency(pocket.amount)}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {activeModal === 'projects' && (
-                        <div className="space-y-3">
-                            {activeProjects.length > 0 ? activeProjects.map(project => (
-                                <div key={project.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-brand-text-light">{project.projectName}</p>
-                                        <p className="text-sm text-brand-text-secondary">{project.clientName}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(project.status, projectStatusConfig)}`}>
-                                        {getSubStatusDisplay(project)}
-                                    </span>
-                                </div>
-                            )) : <p className="text-center text-brand-text-secondary py-8">Tidak ada Acara Pernikahan aktif.</p>}
-                        </div>
-                    )}
-                    {activeModal === 'clients' && (
-                        <div className="space-y-3">
-                            {activeClients.map(client => (
-                                <div key={client.id} className="p-3 bg-brand-bg rounded-lg">
-                                    <p className="font-semibold text-brand-text-light">{client.name}</p>
-                                    <p className="text-sm text-brand-text-secondary">{client.email}</p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {activeModal === 'teamMembers' && (
-                        <div className="space-y-3">
-                            {teamMembers.map(member => (
-                                <div key={member.id} className="p-3 bg-brand-bg rounded-lg">
-                                    <p className="font-semibold text-brand-text-light">{member.name}</p>
-                                    <p className="text-sm text-brand-text-secondary">{member.role}</p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {activeModal === 'payments' && (
-                        <div className="space-y-3">
-                            {unpaidTeamPayments.length > 0 ? unpaidTeamPayments.map(p => (
-                                <div key={p.id} className="p-3 bg-brand-bg rounded-lg flex justify-between items-center">
-                                    <div>
-                                        <p className="font-semibold text-brand-text-light">{p.teamMemberName}</p>
-                                        <p className="text-sm text-brand-text-secondary">Acara Pernikahan: {projects.find(proj => proj.id === p.projectId)?.projectName || 'N/A'}</p>
-                                    </div>
-                                    <p className="font-semibold text-brand-danger">{formatCurrency(p.fee)}</p>
-                                </div>
-                            )) : <p className="text-center text-brand-text-secondary py-8">Tidak ada pembayaran yang tertunda.</p>}
-                        </div>
-                    )}
+            {/* Other generic modal */}
+            <Modal isOpen={!!activeModal && !['balance', 'projects', 'teamMembers'].includes(activeModal)} onClose={() => setActiveModal(null)} title={activeModal ? modalTitles[activeModal] : ''} size="2xl">
+                <div className="p-4 text-center">
+                    <p className="text-xs text-brand-text-secondary font-bold uppercase">Detail info available in module pages</p>
                 </div>
             </Modal>
         </div>

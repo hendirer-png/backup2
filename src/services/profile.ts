@@ -107,8 +107,23 @@ function toRow(p: Partial<Profile>): any {
   };
 }
 
-export async function getProfile(): Promise<Profile | null> {
-  const { data, error } = await supabase.from(TABLE).select('*').order('created_at', { ascending: true }).limit(1).maybeSingle();
+export async function getProfile(id?: string): Promise<Profile | null> {
+  let query = supabase.from(TABLE).select('*');
+  
+  if (id && typeof id === 'string') {
+    // Validate UUID format to prevent Supabase 400 error
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (isUuid) {
+      query = query.eq('id', id);
+    } else {
+      // If not a UUID (e.g., VEN001 placeholder or something else), fallback to default
+      query = query.order('created_at', { ascending: true }).limit(1);
+    }
+  } else {
+    query = query.order('created_at', { ascending: true }).limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle();
   if (error && error.code !== 'PGRST116') throw error;
   return data ? fromRow(data) : null;
 }
